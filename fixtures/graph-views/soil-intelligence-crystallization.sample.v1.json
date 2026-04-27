@@ -1,0 +1,82 @@
+{
+  "artifact_version": "v1",
+  "artifact_type": "meshrush.crystallized_graph_artifact",
+  "artifact_id": "meshrush-crystal-soil-intelligence-demo-0001",
+  "graph_view_id": "graph-view-gaia-ofif-soil-demo-0001",
+  "created_at": "2026-04-27T01:05:00Z",
+  "entry_node_refs": [
+    "ofif-event-0001-soil-field-demo"
+  ],
+  "traversed_node_refs": [
+    "ofif-event-0001-soil-field-demo",
+    "gaia-feature-ofif-event-0001-soil-field-demo",
+    "gaia-soil-eo-context-demo-0001",
+    "gaia-soil-fusion-demo-0001",
+    "gaia-decision-card-soil-demo-0001",
+    "mesh-node-local-m2-demo-001",
+    "slice-soil-intelligence-demo-0001",
+    "mesh-telemetry-local-m2-demo-001",
+    "search-gaia-decision-card-soil-demo-0001"
+  ],
+  "traversed_edge_refs": [
+    "edge:ofif-event-derived-gaia-feature",
+    "edge:gaia-feature-plus-eo-context-fusion",
+    "edge:fusion-to-decision-card",
+    "edge:decision-card-indexed-by-sherlock",
+    "edge:mesh-node-hosts-slice",
+    "edge:slice-emits-telemetry"
+  ],
+  "diffusion": {
+    "entry_strategy": "evidence-first",
+    "expansion_axes": ["spatial", "temporal", "provenance", "runtime", "search"],
+    "bounded_scope": "soil-intelligence-demo-h3-8928308280fffff"
+  },
+  "stop_condition": {
+    "reason": "bounded-evidence-sufficient-for-advisory-demo",
+    "satisfied": true,
+    "notes": "Stopped after finding field event, world-state feature, EO context, fusion artifact, decision card, mesh execution context, telemetry, and Sherlock discovery record."
+  },
+  "crystallized_claims": [
+    {
+      "claim_id": "claim-soil-demo-evidence-chain-complete",
+      "claim": "The soil-intelligence demo has a complete non-actuating evidence chain from OFIF event to GAIA decision card to Sherlock discovery.",
+      "confidence": 0.82,
+      "evidence_refs": [
+        "ofif-event-0001-soil-field-demo",
+        "gaia-soil-fusion-demo-0001",
+        "gaia-decision-card-soil-demo-0001"
+      ]
+    },
+    {
+      "claim_id": "claim-soil-demo-runtime-is-planning-reference",
+      "claim": "Runtime reference exists, but Lattice Forge admission remains gated until executable runtime validation is complete.",
+      "confidence": 0.9,
+      "evidence_refs": ["docs/integrations/RUNTIME_BOUNDARY_DEFINITIONS.md"]
+    }
+  ],
+  "policy_refs": [
+    "policy://gaia/soil-intelligence/demo-standard-v1",
+    "acceptable-use://socioprophet/demo-non-actuating"
+  ],
+  "uncertainty": {
+    "notes": "Fixture proves graph-operating structure. It does not validate agronomic correctness or operational deployment."
+  },
+  "recommended_next_action": {
+    "action_type": "validate",
+    "description": "Run contract fixture CI and then implement executable runtime validation before Lattice Forge admission.",
+    "action_boundary": "advisory"
+  },
+  "provenance": {
+    "source_refs": [
+      "SocioProphet/gaia-world-model:fixtures/mesh/soil-intelligence-mesh-experiment.sample.v1.json",
+      "SocioProphet/gaia-world-model:fixtures/mesh/mesh-telemetry.local-host-health.sample.v1.json",
+      "SocioProphet/sherlock-search:examples/gaia-soil-intelligence-mesh-experiment.sherlock-result.v1.json"
+    ],
+    "generated_by": "manual-fixture",
+    "content_hash": "sha256:meshrush-soil-crystal-fixture-placeholder"
+  },
+  "classification": {
+    "data_class": "internal",
+    "handling_tags": ["demo", "meshrush", "gaia", "ofif", "soil-intelligence"]
+  }
+}
