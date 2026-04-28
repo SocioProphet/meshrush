@@ -12,9 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURES = [
-    ROOT / "fixtures/graph-views/soil-intelligence-crystallization.sample.v1.json",
-]
+FIXTURES = sorted((ROOT / "fixtures/graph-views").glob("*.sample.v1.json"))
 REQUIRED = [
     "artifact_version",
     "artifact_type",
@@ -31,6 +29,7 @@ REQUIRED = [
     "provenance",
     "classification",
 ]
+VALID_BOUNDARIES = {"advisory", "approval_required", "executable", "blocked"}
 
 
 def fail(message: str) -> None:
@@ -63,6 +62,8 @@ def require_nonempty_array(doc: Dict[str, Any], field: str, path: Path) -> None:
 
 
 def main() -> int:
+    if not FIXTURES:
+        fail("no crystallization fixtures found")
     checked = 0
     for fixture in FIXTURES:
         doc = load_json(fixture)
@@ -77,8 +78,13 @@ def main() -> int:
         if not isinstance(stop_condition, dict) or stop_condition.get("satisfied") is not True:
             fail(f"{fixture} stop_condition.satisfied must be true")
         action = doc.get("recommended_next_action")
-        if not isinstance(action, dict) or "action_boundary" not in action:
-            fail(f"{fixture} recommended_next_action.action_boundary is required")
+        if not isinstance(action, dict):
+            fail(f"{fixture} recommended_next_action must be object")
+        boundary = action.get("action_boundary")
+        if boundary not in VALID_BOUNDARIES:
+            fail(f"{fixture} recommended_next_action.action_boundary invalid: {boundary}")
+        if boundary == "approval_required" and "approval-required" not in doc.get("classification", {}).get("handling_tags", []):
+            fail(f"{fixture} approval_required artifacts must carry approval-required handling tag")
         checked += 1
     print(f"validated {checked} MeshRush crystallization fixture(s)")
     return 0
