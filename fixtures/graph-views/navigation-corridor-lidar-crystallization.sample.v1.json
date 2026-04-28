@@ -1,0 +1,102 @@
+{
+  "artifact_version": "v1",
+  "artifact_type": "meshrush.crystallized_graph_artifact",
+  "artifact_id": "meshrush-crystal-navigation-corridor-lidar-demo-0001",
+  "graph_view_id": "graph-view-gaia-lidar-navigation-demo-0001",
+  "created_at": "2026-04-27T23:42:00Z",
+  "entry_node_refs": [
+    "gaia-nav-lidar-rail-demo-0001"
+  ],
+  "traversed_node_refs": [
+    "gaia-nav-lidar-rail-demo-0001",
+    "gaia.navigation.lidar_feature_extract.output",
+    "rail-segment-demo-a-001",
+    "vegetation-encroachment-demo-001",
+    "clearance-envelope-demo-001",
+    "navigation-safety-case-lidar-advisory-demo-0001",
+    "search-gaia-lidar-derived-infrastructure-assets-demo-0001",
+    "risk-exposure-rail-vegetation-demo-0001",
+    "work-order-candidate-rail-vegetation-demo-0001",
+    "control-tower-card-navigation-asset-health-demo-0001",
+    "lidar-runtime-rollback-plan-demo-0001"
+  ],
+  "traversed_edge_refs": [
+    "edge:lidar-observation-to-derived-assets",
+    "edge:derived-assets-to-advisory-safety-case",
+    "edge:derived-assets-indexed-by-sherlock",
+    "edge:vegetation-feature-to-risk-exposure",
+    "edge:risk-exposure-to-work-order-candidate",
+    "edge:work-order-candidate-to-control-tower-card",
+    "edge:runtime-output-to-rollback-plan"
+  ],
+  "diffusion": {
+    "entry_strategy": "evidence-first",
+    "expansion_axes": ["spatial", "temporal", "provenance", "runtime", "safety-case", "control-tower"],
+    "bounded_scope": "rail-corridor-demo-a:h3:8928308280fffff"
+  },
+  "stop_condition": {
+    "reason": "advisory-safety-boundary-reached",
+    "satisfied": true,
+    "notes": "Stopped after finding LiDAR source observation, derived assets, advisory safety case, Sherlock evidence record, control-tower risk/work-order records, and rollback plan. No executable action is authorized."
+  },
+  "crystallized_claims": [
+    {
+      "claim_id": "claim-lidar-evidence-chain-complete-demo-0001",
+      "claim": "The LiDAR navigation demo has a complete evidence chain from corridor observation to derived infrastructure assets to advisory safety case to Sherlock discovery.",
+      "confidence": 0.84,
+      "evidence_refs": [
+        "gaia-nav-lidar-rail-demo-0001",
+        "gaia.navigation.lidar_feature_extract.output",
+        "navigation-safety-case-lidar-advisory-demo-0001",
+        "search-gaia-lidar-derived-infrastructure-assets-demo-0001"
+      ]
+    },
+    {
+      "claim_id": "claim-lidar-safety-boundary-advisory-demo-0001",
+      "claim": "The current LiDAR-derived route/corridor evidence remains advisory and is not approved for safety-critical navigation, automatic route closure, speed restriction, or unapproved work dispatch.",
+      "confidence": 0.93,
+      "evidence_refs": [
+        "navigation-safety-case-lidar-advisory-demo-0001",
+        "lidar-runtime-rollback-plan-demo-0001"
+      ]
+    },
+    {
+      "claim_id": "claim-control-tower-review-path-exists-demo-0001",
+      "claim": "A control-tower review path exists through risk exposure and work-order candidate records, but the action boundary remains approval-required.",
+      "confidence": 0.81,
+      "evidence_refs": [
+        "risk-exposure-rail-vegetation-demo-0001",
+        "work-order-candidate-rail-vegetation-demo-0001",
+        "control-tower-card-navigation-asset-health-demo-0001"
+      ]
+    }
+  ],
+  "policy_refs": [
+    "policy://gaia/navigation/advisory-only-v1",
+    "policy://gaia/navigation/safety-case/approval-required-v1",
+    "policy://gaia/control-tower/human-review-v1"
+  ],
+  "uncertainty": {
+    "notes": "Fixture proves graph-operating structure and advisory governance. It does not validate live LiDAR, track clearance, agency approval, or operational route status."
+  },
+  "recommended_next_action": {
+    "action_type": "create_review_task",
+    "description": "Create a human review task for the vegetation watch feature and preserve the advisory safety boundary until operator approval exists.",
+    "action_boundary": "approval_required"
+  },
+  "provenance": {
+    "source_refs": [
+      "SocioProphet/gaia-world-model:fixtures/navigation/rail-corridor-lidar-observation.sample.v1.json",
+      "SocioProphet/gaia-world-model:fixtures/navigation/lidar-derived-infrastructure-assets.sample.v1.json",
+      "SocioProphet/gaia-world-model:fixtures/navigation/navigation-safety-case.lidar-advisory.sample.v1.json",
+      "SocioProphet/sherlock-search:examples/gaia-lidar-derived-infrastructure-assets.sherlock-result.v1.json",
+      "SocioProphet/gaia-world-model:fixtures/navigation/lidar-runtime-rollback-plan.sample.v1.json"
+    ],
+    "generated_by": "manual-fixture",
+    "content_hash": "sha256:meshrush-navigation-lidar-crystal-fixture-placeholder"
+  },
+  "classification": {
+    "data_class": "internal",
+    "handling_tags": ["demo", "meshrush", "gaia", "navigation", "lidar", "advisory", "approval-required"]
+  }
+}
