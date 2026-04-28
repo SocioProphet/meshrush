@@ -1,0 +1,124 @@
+{
+  "artifact_version": "v1",
+  "artifact_type": "meshrush.crystallized_graph_artifact",
+  "artifact_id": "meshrush-crystal-gaia-map-osm-demo-0001",
+  "graph_view_id": "graph-view-gaia-map-osm-demo-0001",
+  "created_at": "2026-04-28T22:12:00Z",
+  "entry_node_refs": [
+    "gaia-osm-demo-road-layer-v1"
+  ],
+  "traversed_node_refs": [
+    "gaia-osm-demo-road-layer-v1",
+    "osm-binding-demo-way-424242",
+    "gaia-road-segment-demo-osm-way-424242",
+    "h3:8928308280fffff",
+    "h3:89283082807ffff",
+    "gaia-osm-route-graph-way-424242-v1",
+    "search-gaia-osm-demo-road-layer-v1",
+    "gaia-osm-ingestion-runtime",
+    "gaia-osm-route-graph-runtime",
+    "gaia-osm-tile-export-runtime",
+    "gaia-ofif-meshlab-capability-map-v1"
+  ],
+  "traversed_edge_refs": [
+    "edge:map-layer-to-osm-feature-binding",
+    "edge:osm-feature-binding-to-gaia-feature",
+    "edge:gaia-feature-to-h3-coverage",
+    "edge:gaia-feature-to-advisory-route-graph",
+    "edge:map-layer-indexed-by-sherlock",
+    "edge:sherlock-result-to-runtime-boundaries",
+    "edge:sherlock-result-to-governance-lanes",
+    "edge:route-graph-to-advisory-safety-boundary"
+  ],
+  "diffusion": {
+    "entry_strategy": "map-layer-first",
+    "expansion_axes": [
+      "spatial",
+      "h3",
+      "osm-identity",
+      "route-graph",
+      "sherlock-evidence",
+      "runtime-boundary",
+      "governance"
+    ],
+    "bounded_scope": "gaia-map-osm-demo:h3:8928308280fffff"
+  },
+  "stop_condition": {
+    "reason": "advisory-route-boundary-reached",
+    "satisfied": true,
+    "notes": "Stopped after finding the OSM feature binding, GAIA feature, H3 coverage, advisory route graph, Sherlock evidence record, runtime-boundary state, and SocioSphere governance lane. No route guidance, dispatch, or runtime execution is authorized."
+  },
+  "crystallized_claims": [
+    {
+      "claim_id": "claim-gaia-map-osm-evidence-chain-complete-demo-0001",
+      "claim": "The GAIA /map OSM demo has a complete evidence chain from map layer to OSM feature binding, GAIA feature, H3 spatial coverage, advisory route graph, and Sherlock discovery record.",
+      "confidence": 0.86,
+      "evidence_refs": [
+        "gaia-osm-demo-road-layer-v1",
+        "osm-binding-demo-way-424242",
+        "gaia-road-segment-demo-osm-way-424242",
+        "gaia-osm-route-graph-way-424242-v1",
+        "search-gaia-osm-demo-road-layer-v1"
+      ]
+    },
+    {
+      "claim_id": "claim-gaia-map-osm-runtime-boundary-known-demo-0001",
+      "claim": "The OSM map workbench proof identifies ingestion, route graph, and tile export runtimes, but those runtimes remain proof/runtime-boundary records and are not Lattice-admitted runtime assets.",
+      "confidence": 0.82,
+      "evidence_refs": [
+        "gaia-osm-ingestion-runtime",
+        "gaia-osm-route-graph-runtime",
+        "gaia-osm-tile-export-runtime"
+      ]
+    },
+    {
+      "claim_id": "claim-gaia-map-osm-advisory-boundary-preserved-demo-0001",
+      "claim": "The GAIA /map OSM route graph remains advisory and is not approved for safety-critical navigation, dispatch authority, or live route guidance.",
+      "confidence": 0.94,
+      "evidence_refs": [
+        "gaia-osm-route-graph-way-424242-v1",
+        "search-gaia-osm-demo-road-layer-v1",
+        "gaia-ofif-meshlab-capability-map-v1"
+      ]
+    }
+  ],
+  "policy_refs": [
+    "policy://gaia/osm/advisory-route-graph-v1",
+    "policy://gaia/map-workbench/evidence-panel-v1",
+    "policy://gaia/runtime-boundary/lattice-admission-required-v1",
+    "policy://sociosphere/governance/validation-lanes-v1"
+  ],
+  "uncertainty": {
+    "notes": "Fixture proves graph-operating structure for the /map workbench. It does not validate live OSM ingestion, production tile serving, route safety, agency approval, or Lattice runtime admission."
+  },
+  "recommended_next_action": {
+    "action_type": "open_map_evidence_review",
+    "description": "Open the GAIA /map evidence and governance panels for human review while preserving advisory-only route semantics.",
+    "action_boundary": "advisory"
+  },
+  "provenance": {
+    "source_refs": [
+      "SocioProphet/gaia-world-model:fixtures/geospatial/osm-road-feature-binding.sample.v1.json",
+      "SocioProphet/gaia-world-model:fixtures/geospatial/osm-derived-map-tile-layer.sample.v1.json",
+      "SocioProphet/gaia-world-model:fixtures/geospatial/osm-route-graph.sample.v1.json",
+      "SocioProphet/sherlock-search:examples/gaia-osm-derived-road-layer.sherlock-result.v1.json",
+      "SocioProphet/prophet-platform:apps/osm-map-api",
+      "SocioProphet/sociosphere:registry/gaia-ofif-meshlab-capability-map.v1.json"
+    ],
+    "generated_by": "manual-fixture",
+    "content_hash": "sha256:meshrush-gaia-map-osm-crystal-fixture-placeholder"
+  },
+  "classification": {
+    "data_class": "internal",
+    "handling_tags": [
+      "demo",
+      "meshrush",
+      "gaia",
+      "osm",
+      "map-workbench",
+      "h3",
+      "sherlock",
+      "advisory"
+    ]
+  }
+}
