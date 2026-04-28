@@ -1,0 +1,5 @@
+{
+  "verification": "p0-meshrush-crystallization",
+  "purpose": "Trigger PR-scoped Crystallization Fixtures workflow for chat-visible P0 verification.",
+  "non_product_artifact": true
+}
