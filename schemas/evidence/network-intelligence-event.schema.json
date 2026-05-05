@@ -1,0 +1,46 @@
+{
+  "title": "MeshRush Network Intelligence Event",
+  "schema_version": "0.1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_type",
+    "graph_view_id",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "spectral_gap, conductance, gossip_trace, cheeger_consistency, katz_relevance, exp_min_estimator, gossip_min_trace, or crystal_stop_decision"
+    },
+    "graph_view_id": {
+      "type": "string"
+    },
+    "transition_model_ref": {
+      "type": ["string", "null"]
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "policy_scope": {
+      "type": ["string", "null"]
+    },
+    "provenance_ref": {
+      "type": ["string", "null"]
+    },
+    "payload": {
+      "type": "object",
+      "description": "Typed payload following specs/05-evidence-network-intelligence.md."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
