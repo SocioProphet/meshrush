@@ -1,0 +1,111 @@
+{
+  "artifact_version": "v1",
+  "artifact_type": "meshrush.graph_view_fixture",
+  "artifact_id": "meshrush-graph-feed-intelligence-reader-0001",
+  "graph_view_id": "graph-view-feed-intelligence-reader-0001",
+  "created_at": "2026-05-31T13:20:00Z",
+  "entry_node_refs": [
+    "feed-item:item-001"
+  ],
+  "traversed_node_refs": [
+    "feed-source:source-global-news",
+    "feed-item:item-001",
+    "slash-topic:/news/global",
+    "newhope-membrane:new-hope-feed-item-membrane",
+    "memory-profile:memorymesh-feed-intelligence-profile",
+    "claim:ticker-gates-ingestion",
+    "claim:rss-is-derived-view",
+    "entity:Socioprophet-News",
+    "entity:RSS",
+    "entity:Kafka-spine"
+  ],
+  "traversed_edge_refs": [
+    "edge:feed-source-to-feed-item",
+    "edge:feed-item-to-slash-topic-scope",
+    "edge:slash-topic-to-newhope-membrane",
+    "edge:newhope-membrane-to-memory-profile",
+    "edge:feed-item-to-claim",
+    "edge:feed-item-to-entity",
+    "edge:claim-to-derived-view-boundary"
+  ],
+  "diffusion": {
+    "entry_strategy": "feed-item-first",
+    "expansion_axes": [
+      "source",
+      "topic-scope",
+      "membrane",
+      "memory-posture",
+      "claim",
+      "entity",
+      "derived-view-boundary"
+    ],
+    "bounded_scope": "feed-intelligence:/news/global:item-001"
+  },
+  "stop_condition": {
+    "reason": "derived-publication-boundary-reached",
+    "satisfied": true,
+    "notes": "Stopped after resolving the feed item, source, SlashTopics scope, New Hope membrane, MemoryMesh profile posture, claims, entities, and derived-view boundary. No publication, writeback, live traversal, or federation is authorized by this fixture."
+  },
+  "crystallized_claims": [
+    {
+      "claim_id": "claim-feed-intelligence-event-chain-visible-0001",
+      "claim": "The Feed Intelligence reader can render an evidence chain from source to normalized item, slash-topic scope, membrane decision, memory posture, claims, and entities.",
+      "confidence": 0.82,
+      "evidence_refs": [
+        "eventlog://feed.subscribed/001",
+        "eventlog://item.fetched/001",
+        "eventlog://item.normalized/001",
+        "eventlog://newhope.membrane/001"
+      ]
+    },
+    {
+      "claim_id": "claim-feed-intelligence-boundary-preserved-0001",
+      "claim": "The Feed Intelligence graph view preserves the boundary that graph preparation does not imply ActivityPub publication or MemoryMesh durable writeback.",
+      "confidence": 0.9,
+      "evidence_refs": [
+        "slash-topic:/news/global",
+        "newhope-membrane:new-hope-feed-item-membrane",
+        "memory-profile:memorymesh-feed-intelligence-profile"
+      ]
+    }
+  ],
+  "policy_refs": [
+    "policy://feed-intelligence/fixture-only-v1",
+    "policy://newhope/membrane-required-v1",
+    "policy://memorymesh/no-writeback-by-default-v1",
+    "policy://activitypub/no-implicit-publication-v1"
+  ],
+  "uncertainty": {
+    "notes": "Fixture demonstrates graph-view shape for the reader. It does not validate live feed ingestion, browser handoff, memory recall, graph traversal runtime, or federation."
+  },
+  "recommended_next_action": {
+    "action_type": "open_reader_evidence_review",
+    "description": "Open the Feed Intelligence reader evidence and memex panels for human review while preserving fixture-only semantics.",
+    "action_boundary": "advisory"
+  },
+  "provenance": {
+    "source_refs": [
+      "SocioProphet/socioprophet:socioprophet-web/client-vue/src/features/feed-intelligence/state.ts",
+      "SocioProphet/slash-topics:examples/feed-intelligence/scope.example.md",
+      "SocioProphet/new-hope:examples/feed-intelligence/membrane-event.example.md",
+      "SocioProphet/memory-mesh:examples/feed-intelligence/memory-profile.example.md",
+      "SourceOS-Linux/BearBrowser:docs/reader-bridge.md"
+    ],
+    "generated_by": "manual-fixture",
+    "content_hash": "sha256:meshrush-feed-intelligence-reader-fixture-placeholder"
+  },
+  "classification": {
+    "data_class": "internal",
+    "handling_tags": [
+      "demo",
+      "meshrush",
+      "feed-intelligence",
+      "reader",
+      "slash-topics",
+      "new-hope",
+      "memorymesh",
+      "bearbrowser",
+      "advisory"
+    ]
+  }
+}
