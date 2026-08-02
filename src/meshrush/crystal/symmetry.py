@@ -13,9 +13,10 @@ so an accepted generator is one an auditor can stand behind.
 - **Empirical null** (§12.5): a candidate is accepted only if its defect is clearly
   separated from within-color random permutations — not just below a fixed tol.
 
-Exact automorphism discovery via nauty/Traces (§12.4 stage 3) is deferred behind
-the ADR-0005 D-H license gate (nauty is Apache-2.0 — verify the vendored version
-before wiring); this module provides the pure-Python certification it will feed.
+Exact automorphism *discovery* (§12.4 stage 3) is implemented in
+``crystal/symmetry_discovery.py`` (MR-04b) as a pure-Python, color-refinement-guided
+backtracking search — the ``pynauty`` binding is GPLv3 and thus not used; this module
+provides the certification that search re-verifies each discovered generator against.
 
 Requires the ``scientific`` extra (``numpy``).
 """
