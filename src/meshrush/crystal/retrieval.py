@@ -143,14 +143,20 @@ class ArtifactSlotFiller:
         art = record.get("artifact", {})
         boundary = art.get("boundary", {})
         node_ids = tuple(boundary.get("included_node_ids", ()))
-        centroid = self._centroid(node_ids)
-        if centroid is None:
+        # Fail fast: every included node must be in the diffusion map. A partial
+        # miss would silently shift the centroid and later emit phantom node IDs
+        # into Crystal Atlas / Sherlock payloads.
+        missing = [n for n in node_ids if n not in self._coord]
+        if not node_ids or missing:
             raise ValueError(
-                f"artifact {art.get('artifact_id')!r} has no included nodes present in the diffusion map"
+                f"artifact {art.get('artifact_id')!r}: included nodes not in diffusion map: "
+                f"{missing or 'none provided'}"
             )
+        centroid = self._centroid(node_ids)
         cert_refs = tuple(
-            c.get("evidence_id", "")
+            eid
             for c in record.get("compile", {}).get("certificate_refs", [])
+            if (eid := c.get("evidence_id"))
         )
         return IndexedArtifact(
             artifact_id=str(art.get("artifact_id", "")),
@@ -169,16 +175,18 @@ class ArtifactSlotFiller:
                     RefusedSlot(slot.name, "anchor nodes not present in the diffusion map")
                 )
                 continue
-            # Rank all artifacts by distance; find the nearest that clears the floor.
-            ranked = sorted(
-                self._artifacts,
-                key=lambda a: float(np.linalg.norm(a.centroid - query)),
-            )
-            best_qualifying = next(
-                (a for a in ranked if a.epistemic.meets(slot.min_epistemic)), None
-            )
-            if best_qualifying is None:
-                best_epi = max((a.epistemic for a in ranked), key=lambda e: e.rank, default=None)
+            # Single pass: track the nearest artifact that clears the floor, and the
+            # best epistemic seen overall (for an informative refusal). No sort.
+            best: "tuple[float, IndexedArtifact] | None" = None
+            best_epi: EpistemicLevel | None = None
+            for a in self._artifacts:
+                if best_epi is None or a.epistemic.rank > best_epi.rank:
+                    best_epi = a.epistemic
+                if a.epistemic.meets(slot.min_epistemic):
+                    dist = float(np.linalg.norm(a.centroid - query))
+                    if best is None or dist < best[0]:
+                        best = (dist, a)
+            if best is None:
                 result.refused.append(
                     RefusedSlot(
                         slot.name,
@@ -190,14 +198,14 @@ class ArtifactSlotFiller:
                     )
                 )
                 continue
-            dist = float(np.linalg.norm(best_qualifying.centroid - query))
+            dist, winner = best
             result.fills[slot.name] = Fill(
                 slot_name=slot.name,
-                artifact_id=best_qualifying.artifact_id,
+                artifact_id=winner.artifact_id,
                 distance=dist,
                 score=1.0 / (1.0 + dist),
-                epistemic=best_qualifying.epistemic,
-                node_ids=best_qualifying.node_ids,
-                certificate_refs=best_qualifying.certificate_refs,
+                epistemic=winner.epistemic,
+                node_ids=winner.node_ids,
+                certificate_refs=winner.certificate_refs,
             )
         return result

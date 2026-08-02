@@ -83,8 +83,20 @@ class RetrievalTests(unittest.TestCase):
         self.assertIn("not present", res.refused[0].reason)
 
     def test_index_rejects_artifact_with_unknown_nodes(self):
+        # All-unknown and PARTIAL-unknown both fail fast (partial would shift the centroid).
         with self.assertRaises(ValueError):
             ArtifactSlotFiller(self.dmap, [_record("bad", ["zzz"])])
+        with self.assertRaises(ValueError):
+            ArtifactSlotFiller(self.dmap, [_record("partial", ["n0", "zzz"])])
+
+    def test_empty_certificate_refs_are_dropped(self):
+        rec = {
+            "artifact": {"artifact_id": "artC", "boundary": {"included_node_ids": ["n0", "n1"]}},
+            "compile": {"outcome": "ACCEPT", "certificate_refs": [{"kind": "x"}]},  # no evidence_id
+        }
+        filler = ArtifactSlotFiller(self.dmap, [rec])
+        res = filler.fill([SlotSpec(name="s", anchor_nodes=("n0",))])
+        self.assertEqual(res.fills["s"].certificate_refs, ())
 
     def test_artifact_epistemic_derivation(self):
         self.assertEqual(artifact_epistemic(_record("x", ["n0"])), EpistemicLevel.BOUNDED)
