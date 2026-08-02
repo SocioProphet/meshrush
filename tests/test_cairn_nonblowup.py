@@ -30,6 +30,7 @@ from meshrush.crystal.materialize import (
     MaterializeMode,
     MaterializePolicy,
     MaterializeRequest,
+    _sizeof,
     materialize,
 )
 from meshrush.crystal.retrieval import ArtifactSlotFiller, SlotSpec
@@ -142,26 +143,32 @@ class MaterializationEgressBoundedTests(unittest.TestCase):
         self.assertTrue(0 < len(result.granted) < len(targets))   # partial grant
         self.assertTrue(result.refused)                           # rest refused, not dropped
         self.assertLessEqual(len(fetch_calls), len(targets))      # single pass, no fan-out
+        # no target is ever fetched more than once (true "single pass", not just a total bound)
+        self.assertEqual(len(fetch_calls), len(set(fetch_calls)))
         self.assertLessEqual(len(result.granted), len(fetch_calls))
 
     def test_short_circuit_withholds_without_fetch_once_budget_saturated(self):
-        # With a target-independent fixed 40B payload and a budget that is an exact
-        # multiple of it, the budget saturates precisely — after which remaining
-        # targets are refused WITHOUT a fetch (no wasted governed egress).
+        # Target-independent fixed payload; the budget is derived from the payload's
+        # ACTUAL serialized size (via the same _sizeof the code uses), so the
+        # saturation is exact without hardcoding serializer byte counts.
+        fixed_payload = {"pad": "x" * 30}
+        unit = _sizeof(fixed_payload)
+        n_fit = 5
+        budget = n_fit * unit
         targets = tuple(_ref(f"t{i}") for i in range(50))
         fetch_calls: list[str] = []
 
         def fetcher(target, mode, projection):
             fetch_calls.append(target.canonical)
-            return {"pad": "x" * 30}  # json -> exactly 40 bytes, independent of target
+            return fixed_payload
 
         result = materialize(
             MaterializeRequest(targets=targets, mode=MaterializeMode.METADATA_ONLY),
-            MaterializePolicy(max_bytes=200), fetcher,  # exactly 5 * 40B
+            MaterializePolicy(max_bytes=budget), fetcher,
         )
-        self.assertEqual(result.total_bytes, 200)                 # saturated to the budget
-        self.assertEqual(len(result.granted), 5)
-        self.assertEqual(len(fetch_calls), 5)                     # no fetch after saturation
+        self.assertEqual(result.total_bytes, budget)              # saturated to the budget
+        self.assertEqual(len(result.granted), n_fit)
+        self.assertEqual(len(fetch_calls), n_fit)                 # no fetch after saturation
         self.assertTrue(any("without fetch" in reason for _, reason in result.refused))
 
 
