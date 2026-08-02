@@ -25,6 +25,10 @@ classifiers = [
 # numpy is BSD-3-Clause (permissive); cataloged as internal-operations vendored IP
 # at ds.internal_ops.libraries.numpy in prophet-core-catalog.
 scientific = ["numpy>=1.26"]
+# The conformance gate (CP-04) validates emitted cairn frames against the vendored
+# normative cairnpath-mesh schemas. jsonschema is MIT (permissive); cataloged as
+# internal-operations vendored IP at ds.internal_ops.libraries.jsonschema.
+conformance = ["jsonschema>=4"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

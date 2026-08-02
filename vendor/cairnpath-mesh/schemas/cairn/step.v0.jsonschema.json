@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://socioprophet.org/schemas/cairn/step.v0.jsonschema.json",
+  "title": "Cairn.Step v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step_id",
+    "line_id",
+    "index",
+    "opcode",
+    "args",
+    "in_context_id",
+    "out_context_id",
+    "metrics",
+    "created_at"
+  ],
+  "properties": {
+    "step_id": { "type": "string", "minLength": 1 },
+    "line_id": { "type": "string", "minLength": 1 },
+    "index": { "type": "integer", "minimum": 0 },
+    "opcode": {
+      "type": "string",
+      "enum": [
+        "expand",
+        "optional_expand",
+        "sequence_expand",
+        "filter",
+        "rank",
+        "dedup",
+        "cap",
+        "materialize",
+        "commit_view"
+      ]
+    },
+    "args": { "type": "object" },
+    "in_context_id": { "type": "string", "minLength": 1 },
+    "out_context_id": { "type": "string", "minLength": 1 },
+    "metrics": { "$ref": "#/$defs/metrics" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "notes": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "opcode": { "const": "expand" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/expand_args" } } }
+    },
+    {
+      "if": { "properties": { "opcode": { "const": "optional_expand" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/optional_expand_args" } } }
+    },
+    {
+      "if": { "properties": { "opcode": { "const": "sequence_expand" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/sequence_expand_args" } } }
+    },
+    {
+      "if": { "properties": { "opcode": { "const": "filter" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/filter_args" } } }
+    },
+    {
+      "if": { "properties": { "opcode": { "const": "rank" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/rank_args" } } }
+    },
+    {
+      "if": { "properties": { "opcode": { "const": "dedup" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/dedup_args" } } }
+    },
+    {
+      "if": { "properties": { "opcode": { "const": "cap" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/cap_args" } } }
+    },
+    {
+      "if": { "properties": { "opcode": { "const": "materialize" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/materialize_args" } } }
+    },
+    {
+      "if": { "properties": { "opcode": { "const": "commit_view" } }, "required": ["opcode"] },
+      "then": { "properties": { "args": { "$ref": "#/$defs/commit_view_args" } } }
+    }
+  ],
+  "$defs": {
+    "dir": { "type": "string", "enum": ["out", "in", "both"] },
+    "uniqueness": {
+      "type": "string",
+      "enum": ["NODE_GLOBAL", "NODE_RECENT", "RELATIONSHIP_GLOBAL", "NONE", "ENGINE_DEFAULT"]
+    },
+    "dedup_strategy": { "type": "string", "enum": ["identity", "canonical_equivalence"] },
+    "rank_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank_policy_id", "tie_break"],
+      "properties": {
+        "rank_policy_id": { "type": "string", "minLength": 1 },
+        "rank_policy_version": { "type": "string" },
+        "tie_break": { "type": "string", "enum": ["entity_ref_lex", "backend_stable"] }
+      }
+    },
+    "frontier_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dedup_strategy", "cap_k", "rank"],
+      "properties": {
+        "dedup_strategy": { "$ref": "#/$defs/dedup_strategy" },
+        "cap_k": { "type": "integer", "minimum": 0 },
+        "rank": { "$ref": "#/$defs/rank_policy" },
+        "unsafe": { "type": "boolean", "default": false },
+        "unsafe_reason": { "type": "string" }
+      }
+    },
+    "expand_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frontier_policy"],
+      "properties": {
+        "dir": { "$ref": "#/$defs/dir" },
+        "max_level": { "type": "integer", "minimum": 0 },
+        "relationship_filter": { "type": "string" },
+        "label_filter": { "type": "string" },
+        "predicate_filter": { "type": "string" },
+        "terminators": { "type": "array", "items": { "type": "string" } },
+        "end_nodes": { "type": "array", "items": { "type": "string" } },
+        "uniqueness": { "$ref": "#/$defs/uniqueness" },
+        "bfs": { "type": "boolean" },
+        "limit": { "type": "integer", "minimum": 0 },
+        "lazy": { "type": "boolean" },
+        "frontier_policy": { "$ref": "#/$defs/frontier_policy" }
+      }
+    },
+    "optional_expand_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frontier_policy", "optional_mode"],
+      "properties": {
+        "dir": { "$ref": "#/$defs/dir" },
+        "max_level": { "type": "integer", "minimum": 0 },
+        "relationship_filter": { "type": "string" },
+        "label_filter": { "type": "string" },
+        "predicate_filter": { "type": "string" },
+        "terminators": { "type": "array", "items": { "type": "string" } },
+        "end_nodes": { "type": "array", "items": { "type": "string" } },
+        "uniqueness": { "$ref": "#/$defs/uniqueness" },
+        "bfs": { "type": "boolean" },
+        "limit": { "type": "integer", "minimum": 0 },
+        "lazy": { "type": "boolean" },
+        "frontier_policy": { "$ref": "#/$defs/frontier_policy" },
+        "optional_mode": { "type": "string", "enum": ["keep_frontier", "empty_frontier", "null_binding"] },
+        "attachments_replay_critical": { "type": "boolean", "default": false }
+      }
+    },
+    "sequence_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "expr"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["node_filter", "edge_filter"] },
+        "expr": { "type": "string", "minLength": 1 },
+        "optional_mode": { "type": "string", "enum": ["keep_frontier", "empty_frontier", "null_binding"] }
+      }
+    },
+    "sequence_expand_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "frontier_policy"],
+      "properties": {
+        "sequence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/sequence_step" } },
+        "begin_sequence_at_start": { "type": "boolean" },
+        "max_level": { "type": "integer", "minimum": 0 },
+        "uniqueness": { "$ref": "#/$defs/uniqueness" },
+        "bfs": { "type": "boolean" },
+        "limit": { "type": "integer", "minimum": 0 },
+        "frontier_policy": { "$ref": "#/$defs/frontier_policy" },
+        "lazy": { "type": "boolean" }
+      }
+    },
+    "filter_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["predicate"],
+      "properties": {
+        "predicate": { "type": "string", "minLength": 1 },
+        "predicate_language": { "type": "string", "enum": ["cairnpath-dsl", "cypher", "atomese", "backend"] }
+      }
+    },
+    "rank_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank"],
+      "properties": { "rank": { "$ref": "#/$defs/rank_policy" } }
+    },
+    "dedup_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dedup_strategy"],
+      "properties": { "dedup_strategy": { "$ref": "#/$defs/dedup_strategy" } }
+    },
+    "cap_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cap_k"],
+      "properties": { "cap_k": { "type": "integer", "minimum": 0 } }
+    },
+    "materialize_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "targets", "max_bytes"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["metadata_only", "properties", "full_subgraph", "packet"] },
+        "targets": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "projection": { "type": "array", "items": { "type": "string" } },
+        "max_bytes": { "type": "integer", "minimum": 0 },
+        "store_as": { "type": "string", "enum": ["kb_nodes", "packet", "cache_only"] }
+      }
+    },
+    "commit_view_args": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "view_id": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fanout", "dedup_ratio", "cap_hit", "elapsed_ms"],
+      "properties": {
+        "fanout": { "type": "integer", "minimum": 0 },
+        "dedup_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cap_hit": { "type": "boolean" },
+        "elapsed_ms": { "type": "integer", "minimum": 0 },
+        "db_hits": { "type": "integer", "minimum": 0 },
+        "cache_hits": { "type": "integer", "minimum": 0 },
+        "materialized_bytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

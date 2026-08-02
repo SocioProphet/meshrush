@@ -1,0 +1,18 @@
+{
+  "vendored_from": "https://github.com/SocioProphet/cairnpath-mesh",
+  "ref": "import/20260325-cairnpath-mesh-e32545e",
+  "commit": "548613e257f19a4f9dd02a8c41a2becc875ede50",
+  "license": "MIT",
+  "retrieved_at": "2026-08-02",
+  "purpose": "Normative CairnPath schemas vendored for the meshrush conformance gate (ADR 0006 / CP-04). MeshRush is the runtime; cairnpath-mesh is the normative schema home.",
+  "files": [
+    {
+      "path": "schemas/cairn/step.v0.jsonschema.json",
+      "sha256": "2c0f87194e1156d173e3a426ed9228fea9dab822a2adb28e6b9175c5b7e46721"
+    },
+    {
+      "path": "schemas/cairn/line.v0.jsonschema.json",
+      "sha256": "8ee533731f28c12b0af940da14343a6734e57b874b4782b5fc72cbd7442c27e0"
+    }
+  ]
+}
