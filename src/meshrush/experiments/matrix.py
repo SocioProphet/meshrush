@@ -3,7 +3,7 @@
 A declarative, runnable matrix of experiments over the MeshRush scientific engine,
 organised by the three families the ADR names:
 
-  * **structural** — the graph is given by an explicit structure (ring, path, grid,
+  * **structural** — the graph is given by an explicit structure (ring, path,
     complete); we test what the engine recovers from known topology.
   * **observation-first** — the graph is *built from observations* (points → kNN),
     the default framing of the engine.

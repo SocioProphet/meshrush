@@ -1,6 +1,5 @@
 import unittest
 
-from meshrush.core.graph_build import WeightedGraph
 from meshrush.experiments.matrix import (
     CANONICAL_EXPERIMENT_COUNT,
     ExperimentFamily,
