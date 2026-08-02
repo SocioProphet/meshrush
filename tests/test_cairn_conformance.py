@@ -5,6 +5,7 @@ provenance hashes (supply-chain tamper-evidence).
 Requires the ``conformance`` extra (``jsonschema``)."""
 import hashlib
 import json
+import os
 import unittest
 from pathlib import Path
 
@@ -26,8 +27,19 @@ class VendorIntegrityTests(unittest.TestCase):
         prov = _load(VENDOR / "PROVENANCE.json")
         self.assertEqual(prov["license"], "MIT")
         self.assertTrue(prov["files"], "provenance must pin at least one file")
+        vendor_root = VENDOR.resolve()
         for entry in prov["files"]:
-            blob = (VENDOR / entry["path"]).read_bytes()
+            rel = entry["path"]
+            # Fail closed on path traversal: a tampered PROVENANCE.json must not make
+            # CI read files outside the vendor directory.
+            self.assertFalse(Path(rel).is_absolute(), f"provenance path must be relative: {rel!r}")
+            self.assertNotIn("..", Path(rel).parts, f"provenance path must not contain '..': {rel!r}")
+            target = (vendor_root / rel).resolve()
+            self.assertTrue(
+                str(target).startswith(str(vendor_root) + os.sep),
+                f"provenance path escapes vendor dir: {rel!r}",
+            )
+            blob = target.read_bytes()
             actual = hashlib.sha256(blob).hexdigest()
             self.assertEqual(
                 actual, entry["sha256"],
@@ -66,6 +78,13 @@ class CairnFrameConformanceTests(unittest.TestCase):
 
     def test_line_references_all_step_ids(self):
         self.assertEqual(self.frames["line"]["steps"], [s["step_id"] for s in self.frames["steps"]])
+
+    def test_unmapped_opcode_fails_closed(self):
+        # An opcode with no normative arg-mapping must refuse, not emit an invalid frame.
+        line = CairnLine("L2", "d", limits=CairnLimits(max_hops=2, max_cap_k=4))
+        line.record_step("filter", [EntityRef("meshrush", "artifact", "a1")], cap_k=1, materialized=True)
+        with self.assertRaises(ValueError):
+            cairnline_to_frames(line, created_at="2026-08-02T00:00:00Z")
 
 
 if __name__ == "__main__":

@@ -54,13 +54,18 @@ def cairnline_to_frames(line: CairnLine, *, created_at: str, status: str = "comp
         steps.append(step)
 
     for ms in line.steps:
-        opcode = _OPCODE_MAP.get(ms.opcode, ms.opcode)
+        # Fail closed: only opcodes with a known, arg-correct normative mapping are
+        # emitted. step.v0 constrains args per opcode (additionalProperties:false),
+        # so emitting a generic {cap_k} for an unmapped opcode would produce a
+        # non-conforming frame. Refuse rather than emit something invalid.
+        if ms.opcode not in _OPCODE_MAP:
+            raise ValueError(
+                f"unsupported cairn opcode {ms.opcode!r} for normative frame emission; "
+                f"mapped opcodes: {sorted(_OPCODE_MAP)} (extend the mapping before recording others)"
+            )
         fanout = len(ms.frontier_out)
         cap_hit = fanout >= ms.cap_k
-        if opcode == "cap":
-            push("cap", {"cap_k": ms.cap_k}, fanout, cap_hit, None)
-        else:  # pass-through for already-normative opcodes carrying a cap
-            push(opcode, {"cap_k": ms.cap_k}, fanout, cap_hit, None)
+        push("cap", {"cap_k": ms.cap_k}, fanout, cap_hit, None)
         if ms.materialized and ms.frontier_out:
             push(
                 "materialize",
