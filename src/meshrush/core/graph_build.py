@@ -107,7 +107,7 @@ def build_knn_graph(
     else:
         if sigma <= 0:
             raise ValueError("sigma must be > 0")
-        denom = np.full((n, n), sigma * sigma, dtype=float)
+        denom = sigma * sigma  # scalar; numpy broadcasts, no (n, n) allocation
 
     affinity = np.exp(-d2 / denom)
 
@@ -129,6 +129,31 @@ def build_knn_graph(
 def laplacian(graph: WeightedGraph) -> np.ndarray:
     """Unnormalized graph Laplacian ``L = D - W`` (rows sum to zero)."""
     return np.diag(graph.degrees) - graph.weights
+
+
+def is_connected(graph: WeightedGraph) -> bool:
+    """True iff every node is reachable from node 0 over positive-weight edges.
+
+    Connectivity matters for the reduction: a disconnected graph has a
+    non-unique stationary distribution (one per component), so the "trivial"
+    eigenpair is degenerate and the diffusion coordinates are ambiguous.
+    """
+    n = graph.n
+    if n == 0:
+        return False
+    if n == 1:
+        return True
+    w = graph.weights
+    seen = {0}
+    stack = [0]
+    while stack:
+        i = stack.pop()
+        row = w[i]
+        for j in range(n):
+            if j not in seen and row[j] > 0.0:
+                seen.add(j)
+                stack.append(j)
+    return len(seen) == n
 
 
 def transition(graph: WeightedGraph) -> np.ndarray:

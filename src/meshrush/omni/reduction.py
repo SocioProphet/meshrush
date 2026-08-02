@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from meshrush.core.graph_build import WeightedGraph
+from meshrush.core.graph_build import WeightedGraph, is_connected
 
 
 @dataclass(frozen=True)
@@ -61,11 +61,21 @@ def diffusion_coordinates(
         raise ValueError("n_coords must be >= 1")
     if t < 0:
         raise ValueError("t must be >= 0")
+    n = graph.n
+    if n < 2:
+        raise ValueError("diffusion reduction needs at least 2 nodes")
     d = graph.degrees
     if np.any(d <= 0.0):
         raise ValueError("graph has an isolated node (zero degree); reduction is undefined")
+    # Fail closed on disconnected graphs: the stationary eigenpair is then
+    # degenerate (one per component), so the trivial pair we drop is not unique
+    # and the returned coordinates would be misleading.
+    if not is_connected(graph):
+        raise ValueError(
+            "graph is disconnected; diffusion coordinates are ambiguous "
+            "(reduce each connected component separately)"
+        )
 
-    n = graph.n
     r = min(n_coords, n - 1)
 
     inv_sqrt_d = 1.0 / np.sqrt(d)

@@ -6,6 +6,7 @@ import numpy as np
 from meshrush.core.graph_build import (
     WeightedGraph,
     build_knn_graph,
+    is_connected,
     laplacian,
     transition,
 )
@@ -56,6 +57,15 @@ class GraphBuildTests(unittest.TestCase):
             build_knn_graph(_ring_embeddings(5), k=5)  # k must be <= n-1
         with self.assertRaises(ValueError):
             build_knn_graph(_ring_embeddings(5), k=2, sigma=-1.0)
+
+    def test_is_connected(self) -> None:
+        self.assertTrue(is_connected(build_knn_graph(_ring_embeddings(8), k=2)))
+        # Two disconnected edges: {0-1} and {2-3}.
+        w = np.zeros((4, 4))
+        w[0, 1] = w[1, 0] = 1.0
+        w[2, 3] = w[3, 2] = 1.0
+        g = WeightedGraph(node_ids=("a", "b", "c", "d"), weights=w, degrees=w.sum(axis=1))
+        self.assertFalse(is_connected(g))
 
     def test_transition_rejects_isolated_node(self) -> None:
         g = WeightedGraph(

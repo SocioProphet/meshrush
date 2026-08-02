@@ -80,6 +80,26 @@ class DiffusionMapTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             diffusion_coordinates(g, n_coords=2, t=-1)
 
+    def test_disconnected_graph_is_refused(self) -> None:
+        # Two 3-cliques, no bridge: the stationary eigenpair is degenerate, so
+        # the reduction must fail closed rather than return ambiguous coordinates.
+        from meshrush.core.graph_build import WeightedGraph
+
+        n = 6
+        w = np.zeros((n, n))
+        for group in (range(3), range(3, 6)):
+            for i in group:
+                for j in group:
+                    if i != j:
+                        w[i, j] = 1.0
+        graph = WeightedGraph(
+            node_ids=tuple(f"n{i}" for i in range(n)),
+            weights=w,
+            degrees=w.sum(axis=1),
+        )
+        with self.assertRaises(ValueError):
+            diffusion_coordinates(graph, n_coords=2)
+
 
 if __name__ == "__main__":
     unittest.main()
