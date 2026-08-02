@@ -18,6 +18,14 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only"
 ]
 
+[project.optional-dependencies]
+# The scientific Omni-Crystal engine (graph_build, reduction, ...) needs a linear-
+# algebra backend. Kept OPTIONAL so the base package stays dependency-free and the
+# Basic* sessions remain a zero-dependency fallback (meshrush ADR 0005).
+# numpy is BSD-3-Clause (permissive); cataloged as internal-operations vendored IP
+# at ds.internal_ops.libraries.numpy in prophet-core-catalog.
+scientific = ["numpy>=1.26"]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
