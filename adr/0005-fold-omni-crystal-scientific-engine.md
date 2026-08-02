@@ -13,7 +13,7 @@ Two systems share the "MeshRush / Omni / Crystal" vocabulary:
 
 2. **The Omni-Crystal scientific spec:** an **observation-first** system — build the graph *from* trajectories (kNN + diffusion maps), harden candidate regions via graph phase-field dynamics (support-density Cahn–Hilliard-like + band term, crystallinity Allen–Cahn, optional MBO), compress with VQ + information bottleneck, discover symmetries via a cascade (typed prepartition → ε-role → nauty/Traces quotient → egonet → probe-equivariance), and emit a bounded artifact only when a 6-gate **compile certificate** passes.
 
-The scientific engine is **not built anywhere in the estate** (verified via estate-wide code search: `nauty`/`Cahn`/`asymmetric-unit`/`band-selection`/`information-bottleneck` = 0 hits). The `Basic*` stubs were authored anticipating it.
+The scientific engine is **not built anywhere in the estate** (verified 2026-08-02 via estate-wide code search over implementation paths — `src/`, `tests/`, `tools/`, excluding docs/ADRs: `Cahn`/`asymmetric-unit`/`band-selection`/`information-bottleneck`/`nauty` = 0 hits). The `Basic*` stubs were authored anticipating it.
 
 ## Decision
 
