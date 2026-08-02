@@ -67,6 +67,16 @@ class VQCodebookTests(unittest.TestCase):
             book = vq_codebook(x, 4, seed=seed)
             self.assertEqual(len(np.unique(book.labels)), 4, f"seed {seed} left an empty codeword")
 
+    def test_force_fill_populates_without_lloyd(self):
+        # n_iter=0 skips Lloyd, so the post-loop safety net must populate all k
+        # without emptying any cluster (labels remain a valid k-way partition).
+        x, _ = _two_blobs()
+        for seed in range(10):
+            book = vq_codebook(x, 6, n_iter=0, seed=seed)
+            counts = np.bincount(book.labels, minlength=6)
+            self.assertTrue(np.all(counts >= 1), f"seed {seed}: empty codeword, counts={counts}")
+            self.assertEqual(int(counts.sum()), x.shape[0])  # partition preserved
+
 
 class InformationTests(unittest.TestCase):
     def test_assignment_entropy_uniform_two_clusters_is_one_bit(self):

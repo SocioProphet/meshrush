@@ -78,8 +78,11 @@ def _kmeanspp_init(x: np.ndarray, k: int, rng: np.random.Generator) -> np.ndarra
 def vq_codebook(x, k: int, *, n_iter: int = 50, seed: int = 0) -> VQCodebook:
     """Quantize points ``x`` (``(n, d)``) into ``k`` codewords via Lloyd's algorithm.
 
-    Deterministic for a fixed ``seed``. Empty clusters are re-seeded to the point
-    farthest from its assigned centroid so ``k`` codewords are always populated.
+    Deterministic for a fixed ``seed``. All ``k`` codewords are guaranteed
+    populated: the run rejects inputs with fewer than ``k`` distinct points, only
+    stops once assignments are stable *and* every codeword is used, and — as a final
+    safety net — moves worst-fit points out of over-populated clusters to fill any
+    codeword still empty (never emptying the source cluster).
     """
     arr = _as_2d(x)
     n = arr.shape[0]
@@ -115,22 +118,22 @@ def vq_codebook(x, k: int, *, n_iter: int = 50, seed: int = 0) -> VQCodebook:
 
     d_sq = np.sum((arr[:, None, :] - centroids[None, :, :]) ** 2, axis=2)
     labels = np.argmin(d_sq, axis=1)
-    # guarantee all k codewords are populated: force each still-empty codeword to
-    # own a worst-fit point (distinct points exist by the n_unique check above).
-    present = set(np.unique(labels).tolist())
-    missing = [j for j in range(k) if j not in present]
-    if missing:
-        worst_order = np.argsort(d_sq[np.arange(n), labels])[::-1]
-        used: set[int] = set()
-        pick = 0
-        for j in missing:
-            while pick < n and worst_order[pick] in used:
-                pick += 1
-            pt = int(worst_order[pick])
-            used.add(pt)
-            pick += 1
-            centroids[j] = arr[pt]
-            labels[pt] = j
+    # guarantee all k codewords are populated: move a worst-fit point out of an
+    # over-populated cluster into each still-empty codeword. Only points whose
+    # source cluster has a spare member are moved, so no cluster is emptied to fill
+    # another; enough surplus always exists because n >= k (pigeonhole).
+    point_distortion = d_sq[np.arange(n), labels]
+    counts = np.bincount(labels, minlength=k).tolist()
+    missing = [j for j in range(k) if counts[j] == 0]
+    for j in missing:
+        best_pt, best_d = -1, -1.0
+        for i in range(n):
+            if counts[labels[i]] > 1 and point_distortion[i] > best_d:
+                best_d, best_pt = float(point_distortion[i]), i
+        counts[labels[best_pt]] -= 1
+        labels[best_pt] = j
+        counts[j] += 1
+        centroids[j] = arr[best_pt]
     # distortion of the final assignment (consistent even after any force-fill)
     inertia = float(np.sum((arr - centroids[labels]) ** 2))
     return VQCodebook(centroids=centroids, labels=labels, inertia=inertia)
