@@ -98,6 +98,12 @@ class BoundaryDefectTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             boundary_defect(_path4(), [1, 1, 0])  # graph has 4 nodes
 
+    def test_non_binary_mask_raises(self):
+        # fractional/negative entries could game D_gb past the gate — reject them
+        for bad in ([0.5, 0.5, 0, 0], [-1, 1, 0, 0], [2, 0, 0, 0]):
+            with self.assertRaises(ValueError):
+                boundary_defect(_path4(), bad)
+
 
 class AttestationTests(unittest.TestCase):
     def test_attestation_is_content_addressed_and_carries_evidence(self):

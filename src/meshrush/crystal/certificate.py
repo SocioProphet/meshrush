@@ -104,7 +104,11 @@ def boundary_defect(graph, mask) -> float:
     m = np.asarray(mask, dtype=float)
     if m.shape != (graph.n,):
         raise ValueError(f"mask length {m.shape} does not match graph size ({graph.n},)")
-    denom = float(np.abs(m).sum())
+    if not np.all(np.isin(m, (0.0, 1.0))):
+        # A binary indicator is required: fractional/negative entries silently compute
+        # a different quantity and could be used to game D_gb past the gate.
+        raise ValueError("mask must be a binary 0/1 indicator")
+    denom = float(m.sum())
     if denom == 0.0:
         raise ValueError("mask is empty; boundary defect is undefined")
     lap = laplacian(graph)
