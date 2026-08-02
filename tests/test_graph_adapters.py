@@ -43,6 +43,18 @@ class Neo4jTests(unittest.TestCase):
             self.assertNotIn("DETACH DELETE", s.query)
             self.assertNotIn(evil, s.query)
 
+    def test_step_key_is_line_scoped_no_cross_line_collision(self):
+        # two lines with an identical first step must not share a step node
+        a = CairnLine(line_id="A", dataset_ref="ds", limits=CairnLimits())
+        a.record_step("expand", [EntityRef("ns", "doc", "a")], cap_k=4)
+        b = CairnLine(line_id="B", dataset_ref="ds", limits=CairnLimits())
+        b.record_step("expand", [EntityRef("ns", "doc", "a")], cap_k=4)
+        self.assertEqual(a.steps[0].digest, b.steps[0].digest)  # content digests match
+        keys_a = {s.params["step_key"] for s in cairnline_to_cypher(a) if "step_key" in s.params}
+        keys_b = {s.params["step_key"] for s in cairnline_to_cypher(b) if "step_key" in s.params}
+        self.assertTrue(keys_a.isdisjoint(keys_b))  # but projected keys are line-scoped
+        self.assertTrue(all("A::" in k for k in keys_a))
+
     def test_orbits_projection(self):
         stmts = orbits_to_cypher(((0, 1), (2,)), graph_id="g1", node_ids=("u", "v", "w"))
         joined = " ".join(s.query for s in stmts)
@@ -64,6 +76,16 @@ class AtomeseTests(unittest.TestCase):
         self.assertTrue(any("has_step" in a for a in atoms))
         self.assertTrue(any("next_step" in a for a in atoms))
         self.assertTrue(any("reached" in a for a in atoms))
+
+    def test_step_atoms_are_line_scoped(self):
+        a = CairnLine(line_id="A", dataset_ref="ds", limits=CairnLimits())
+        a.record_step("expand", [EntityRef("ns", "doc", "a")], cap_k=4)
+        b = CairnLine(line_id="B", dataset_ref="ds", limits=CairnLimits())
+        b.record_step("expand", [EntityRef("ns", "doc", "a")], cap_k=4)
+        step_atoms_a = {x for x in cairnline_to_atomese(a) if "cairnstep" in x}
+        step_atoms_b = {x for x in cairnline_to_atomese(b) if "cairnstep" in x}
+        self.assertTrue(step_atoms_a.isdisjoint(step_atoms_b))
+        self.assertTrue(all("cairnstep:A:" in x for x in step_atoms_a))
 
     def test_names_are_escaped(self):
         line = CairnLine(line_id='has"quote', dataset_ref="ds", limits=CairnLimits())

@@ -38,7 +38,9 @@ def cairnline_to_atomese(line: CairnLine) -> list[str]:
     atoms: list[str] = [line_atom]
     prev_atom: str | None = None
     for step in line.steps:
-        step_atom = _concept(f"meshrush:cairnstep:{step.digest}")
+        # line-scope the step atom: CairnStep.digest excludes line_id, so naming by
+        # digest alone would collide (and cross-link next_step) across CairnLines.
+        step_atom = _concept(f"meshrush:cairnstep:{line.line_id}:{step.digest}")
         atoms.append(step_atom)
         atoms.append(_eval("has_step", line_atom, step_atom))
         if prev_atom is not None:

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from meshrush.core.cairn import CairnLine
+from meshrush.core.cairn import CairnLine, CairnStep
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,14 @@ class CypherStatement:
 
     query: str
     params: dict = field(default_factory=dict)
+
+
+def _step_key(line: CairnLine, step: CairnStep) -> str:
+    """Line-scoped step identity. ``CairnStep.digest`` is content-based and excludes
+    ``line_id`` (it is the *replay* identity), so keying step nodes by digest alone
+    would let different CairnLines collide onto one node and cross-link their NEXT /
+    REACHED edges. Scope by ``line_id`` to keep each line's steps distinct."""
+    return f"{line.line_id}::{step.digest}"
 
 
 def cairnline_to_cypher(line: CairnLine) -> list[CypherStatement]:
@@ -39,34 +47,36 @@ def cairnline_to_cypher(line: CairnLine) -> list[CypherStatement]:
             {"line_id": line.line_id, "dataset_ref": line.dataset_ref, "digest": line.digest},
         )
     ]
-    prev_digest: str | None = None
+    prev_key: str | None = None
     for step in line.steps:
+        step_key = _step_key(line, step)
         stmts.append(CypherStatement(
             "MATCH (l:CairnLine {line_id: $line_id}) "
-            "MERGE (s:CairnStep {digest: $digest}) "
-            "SET s.index = $index, s.opcode = $opcode, s.cap_k = $cap_k, "
+            "MERGE (s:CairnStep {step_key: $step_key}) "
+            "SET s.digest = $digest, s.line_id = $line_id, s.index = $index, "
+            "s.opcode = $opcode, s.cap_k = $cap_k, "
             "s.rank_policy = $rank_policy, s.materialized = $materialized "
             "MERGE (l)-[:HAS_STEP]->(s)",
             {
-                "line_id": line.line_id, "digest": step.digest, "index": step.index,
-                "opcode": step.opcode, "cap_k": step.cap_k,
+                "line_id": line.line_id, "step_key": step_key, "digest": step.digest,
+                "index": step.index, "opcode": step.opcode, "cap_k": step.cap_k,
                 "rank_policy": step.rank_policy, "materialized": step.materialized,
             },
         ))
-        if prev_digest is not None:
+        if prev_key is not None:
             stmts.append(CypherStatement(
-                "MATCH (a:CairnStep {digest: $prev}), (b:CairnStep {digest: $cur}) "
+                "MATCH (a:CairnStep {step_key: $prev}), (b:CairnStep {step_key: $cur}) "
                 "MERGE (a)-[:NEXT]->(b)",
-                {"prev": prev_digest, "cur": step.digest},
+                {"prev": prev_key, "cur": step_key},
             ))
         for canon in step.frontier_out:
             stmts.append(CypherStatement(
-                "MATCH (s:CairnStep {digest: $digest}) "
+                "MATCH (s:CairnStep {step_key: $step_key}) "
                 "MERGE (e:Entity {canonical: $canonical}) "
                 "MERGE (s)-[:REACHED]->(e)",
-                {"digest": step.digest, "canonical": canon},
+                {"step_key": step_key, "canonical": canon},
             ))
-        prev_digest = step.digest
+        prev_key = step_key
     return stmts
 
 
