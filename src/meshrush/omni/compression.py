@@ -10,11 +10,11 @@ or target field).
 
 The **compression gain** ``ΔH = I(T; Y)`` (bits) — the relevance information the
 codebook captures — is the quantity the MR-06 compile certificate's
-``compression_gain`` gate consumes (``ΔH > h*``): a region earns compiled status
-only if a compact codebook of it still explains the relevance target. A codebook
-that carves the geometry but says nothing about ``Y`` has ΔH ≈ 0 and fails the
-gate; a single codeword (``k = 1``) is a constant summary with ΔH = 0 by
-construction.
+``compression_gain`` gate consumes (accept only when ``ΔH > h*``): a region earns
+compiled status only if a compact codebook of it still explains the relevance
+target. A codebook that carves the geometry but says nothing about ``Y`` has
+ΔH ≈ 0 and fails the gate; a single codeword (``k = 1``) is a constant summary
+with ΔH = 0 by construction.
 
 Requires the ``scientific`` extra (``numpy``).
 """
@@ -87,15 +87,20 @@ def vq_codebook(x, k: int, *, n_iter: int = 50, seed: int = 0) -> VQCodebook:
         raise ValueError("k must be >= 1")
     if k > n:
         raise ValueError(f"k={k} exceeds number of points n={n}")
+    n_unique = np.unique(arr, axis=0).shape[0]
+    if n_unique < k:
+        # fewer distinct points than codewords -> k populated clusters is impossible
+        raise ValueError(f"k={k} exceeds number of distinct points ({n_unique})")
 
     rng = np.random.default_rng(seed)
     centroids = _kmeanspp_init(arr, k, rng)
     labels = np.zeros(n, dtype=int)
-    for _ in range(n_iter):
+    for it in range(n_iter):
         # assign: nearest centroid by squared Euclidean distance
         d_sq = np.sum((arr[:, None, :] - centroids[None, :, :]) ** 2, axis=2)
         new_labels = np.argmin(d_sq, axis=1)
-        if np.array_equal(new_labels, labels) and _ > 0:
+        # stop only once assignments are stable AND every codeword is used
+        if it > 0 and np.array_equal(new_labels, labels) and np.unique(new_labels).size == k:
             labels = new_labels
             break
         labels = new_labels
@@ -110,7 +115,24 @@ def vq_codebook(x, k: int, *, n_iter: int = 50, seed: int = 0) -> VQCodebook:
 
     d_sq = np.sum((arr[:, None, :] - centroids[None, :, :]) ** 2, axis=2)
     labels = np.argmin(d_sq, axis=1)
-    inertia = float(d_sq[np.arange(n), labels].sum())
+    # guarantee all k codewords are populated: force each still-empty codeword to
+    # own a worst-fit point (distinct points exist by the n_unique check above).
+    present = set(np.unique(labels).tolist())
+    missing = [j for j in range(k) if j not in present]
+    if missing:
+        worst_order = np.argsort(d_sq[np.arange(n), labels])[::-1]
+        used: set[int] = set()
+        pick = 0
+        for j in missing:
+            while pick < n and worst_order[pick] in used:
+                pick += 1
+            pt = int(worst_order[pick])
+            used.add(pt)
+            pick += 1
+            centroids[j] = arr[pt]
+            labels[pt] = j
+    # distortion of the final assignment (consistent even after any force-fill)
+    inertia = float(np.sum((arr - centroids[labels]) ** 2))
     return VQCodebook(centroids=centroids, labels=labels, inertia=inertia)
 
 
@@ -133,6 +155,8 @@ def mutual_information_bits(labels, y) -> float:
     """``I(T; Y)`` in bits between codeword assignment ``T`` and relevance label ``Y``."""
     t = np.asarray(labels)
     yy = np.asarray(y)
+    if t.ndim != 1 or yy.ndim != 1:
+        raise ValueError("labels and y must be 1-D arrays")
     if t.shape[0] != yy.shape[0]:
         raise ValueError("labels and y must have the same length")
     if t.shape[0] == 0:
@@ -154,8 +178,8 @@ def mutual_information_bits(labels, y) -> float:
 def compression_gain(labels, y) -> float:
     """MR-06 ``ΔH`` — the relevance information a codebook captures, ``I(T; Y)`` bits.
 
-    This is the value fed to ``CompileMetrics.delta_h``; the compile certificate's
-    ``compression_gain`` gate accepts only when ``ΔH > h*``.
+    This is the ΔH the compile certificate's ``compression_gain`` gate compares to
+    its threshold (accept only when ``ΔH > h*``).
     """
     return mutual_information_bits(labels, y)
 
@@ -176,6 +200,8 @@ def compress_region(x, y, k: int, *, n_iter: int = 50, seed: int = 0) -> Compres
     """
     yy = np.asarray(y)
     arr = _as_2d(x)
+    if yy.ndim != 1:
+        raise ValueError("y must be a 1-D array of per-point labels")
     if yy.shape[0] != arr.shape[0]:
         raise ValueError("y must have one label per point in x")
     book = vq_codebook(arr, k, n_iter=n_iter, seed=seed)

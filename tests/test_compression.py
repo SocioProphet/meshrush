@@ -56,6 +56,17 @@ class VQCodebookTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             vq_codebook(np.zeros(5), 1)  # not 2-D
 
+    def test_fewer_distinct_points_than_k_raises(self):
+        # 10 identical points can never populate 3 codewords
+        with self.assertRaises(ValueError):
+            vq_codebook(np.ones((10, 2)), 3)
+
+    def test_all_codewords_populated_across_seeds(self):
+        x, _ = _two_blobs()
+        for seed in range(20):
+            book = vq_codebook(x, 4, seed=seed)
+            self.assertEqual(len(np.unique(book.labels)), 4, f"seed {seed} left an empty codeword")
+
 
 class InformationTests(unittest.TestCase):
     def test_assignment_entropy_uniform_two_clusters_is_one_bit(self):
@@ -78,6 +89,10 @@ class InformationTests(unittest.TestCase):
     def test_mi_length_mismatch_raises(self):
         with self.assertRaises(ValueError):
             mutual_information_bits(np.array([0, 1]), np.array([0]))
+
+    def test_mi_scalar_inputs_raise_valueerror(self):
+        with self.assertRaises(ValueError):
+            mutual_information_bits(np.array(0), np.array(1))  # 0-D, not IndexError
 
 
 class CompressionGainTests(unittest.TestCase):
@@ -107,6 +122,11 @@ class CompressionGainTests(unittest.TestCase):
         x, _ = _two_blobs()
         with self.assertRaises(ValueError):
             compress_region(x, np.array([0, 1, 2]), 2)
+
+    def test_compress_region_scalar_y_raises_valueerror(self):
+        x, _ = _two_blobs()
+        with self.assertRaises(ValueError):
+            compress_region(x, np.array(1), 2)  # 0-D y, not IndexError
 
 
 if __name__ == "__main__":
