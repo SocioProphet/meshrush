@@ -102,6 +102,15 @@ The diffusion frontier is the evolving boundary between explored and not-yet-exp
 A reduction surface is the simplified or compressed local picture that Omni maintains while exploring.
 This may be geometric, spectral, topological, statistical, or policy-informed.
 
+**Implementation status (MR-05):** `omni/compression.py` compresses the diffusion
+embedding into a vector-quantization codebook (`vq_codebook`, seeded k-means++ /
+Lloyd) and scores it by the information-bottleneck principle: `compression_gain`
+returns `ΔH = I(T; Y)` in bits — the relevance a compact codebook retains about a
+target `Y`. This ΔH is the value the MR-06 compile certificate's
+`compression_gain` gate consumes (`ΔH > h*`); a `k=1` codebook has ΔH = 0 by
+construction, so a region must admit a non-trivial relevance-preserving summary to
+compile.
+
 ### Stop candidate
 
 A stop candidate is a signal that continued diffusion may no longer be justified.
