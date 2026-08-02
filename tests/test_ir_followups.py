@@ -5,7 +5,9 @@ import numpy as np
 
 from meshrush.core.graph_build import build_knn_graph
 from meshrush.omni.reduction import diffusion_coordinates
-from meshrush.crystal.retrieval import ArtifactSlotFiller, SlotSpec
+from meshrush.crystal.retrieval import ArtifactSlotFiller, SlotSpec, dedup_by_symmetry
+from meshrush.crystal.retrieval import IndexedArtifact
+from meshrush.crystal.retrieval import EpistemicLevel
 from meshrush.adapters.memory_mesh.contracts import (
     build_recall_request,
     prime_slot,
@@ -46,6 +48,16 @@ class SymmetryAwareRetrievalTests(unittest.TestCase):
     def test_generators_require_graph(self):
         with self.assertRaises(ValueError):
             ArtifactSlotFiller(self.dmap, self.arts, symmetry_generators=[self.rot2])
+
+    def test_orbit_exceeding_cap_fails_closed(self):
+        # Rotation-by-1 on the 8-ring: a single node's orbit is all 8 nodes.
+        rot1 = np.array([(i + 1) % 8 for i in range(8)])
+        art = IndexedArtifact(
+            artifact_id="A", node_ids=("n0",),
+            centroid=np.zeros(3), epistemic=EpistemicLevel.BOUNDED,
+        )
+        with self.assertRaises(ValueError):
+            dedup_by_symmetry([art], [rot1], tuple(self.dmap.node_ids), self.g, max_orbit=3)
 
 
 class RecallPrimingTests(unittest.TestCase):

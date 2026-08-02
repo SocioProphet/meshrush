@@ -57,7 +57,14 @@ def dedup_by_symmetry(artifacts, generators, node_order, graph, *, max_orbit: in
         start = tuple(sorted(index_of[n] for n in node_ids if n in index_of))
         seen = {start}
         frontier = [start]
-        while frontier and len(seen) < max_orbit:
+        while frontier:
+            # Fail closed: explore the FULL orbit so ``min(seen)`` is the true
+            # canonical representative. A truncated orbit could return a non-canonical
+            # key and make symmetry-equivalent artifacts dedup inconsistently.
+            if len(seen) > max_orbit:
+                raise ValueError(
+                    f"symmetry orbit exceeds max_orbit={max_orbit}; raise the cap or reduce generators"
+                )
             cur = frontier.pop()
             for g in gens:
                 img = tuple(sorted(int(g[i]) for i in cur))
