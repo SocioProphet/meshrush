@@ -25,12 +25,54 @@ from enum import Enum
 import numpy as np
 
 from meshrush.core.cairn import CairnLimits, CairnLine, EntityRef, bounded_frontier_step
+from meshrush.crystal.symmetry import is_automorphism
 from meshrush.omni.reduction import DiffusionMap
 
 
 def artifact_entity_ref(artifact_id: str) -> EntityRef:
     """Canonical cairn identity for a compiled artifact (the findable address)."""
     return EntityRef(namespace="meshrush", kind="artifact", key=artifact_id)
+
+
+def dedup_by_symmetry(artifacts, generators, node_order, graph, *, max_orbit: int = 256):
+    """Collapse symmetry-equivalent artifacts to one orbit representative.
+
+    Two artifacts whose node-sets map onto each other under the graph's automorphism
+    group are the same finding up to symmetry; returning both is redundant. Each
+    supplied generator is **verified to be a graph automorphism** (fail closed) via
+    ``crystal.symmetry.is_automorphism``; artifacts are then keyed by the canonical
+    (lexicographically minimal) member of their node-set orbit, keeping the
+    highest-epistemic representative per orbit.
+    """
+    import numpy as np
+
+    gens = [np.asarray(g, dtype=int) for g in generators]
+    for g in gens:
+        if not is_automorphism(graph, g):
+            raise ValueError("symmetry generator is not a graph automorphism (fail closed)")
+
+    index_of = {nid: i for i, nid in enumerate(node_order)}
+
+    def orbit_key(node_ids) -> tuple:
+        start = tuple(sorted(index_of[n] for n in node_ids if n in index_of))
+        seen = {start}
+        frontier = [start]
+        while frontier and len(seen) < max_orbit:
+            cur = frontier.pop()
+            for g in gens:
+                img = tuple(sorted(int(g[i]) for i in cur))
+                if img not in seen:
+                    seen.add(img)
+                    frontier.append(img)
+        return min(seen)
+
+    best: dict[tuple, object] = {}
+    for a in artifacts:
+        k = orbit_key(a.node_ids)
+        cur = best.get(k)
+        if cur is None or a.epistemic.rank > cur.epistemic.rank:
+            best[k] = a
+    return list(best.values())
 
 
 class EpistemicLevel(str, Enum):
@@ -135,11 +177,26 @@ class ArtifactSlotFiller:
     """Indexes compiled artifacts in diffusion-coordinate space and fills slots by
     nearest-artifact retrieval under an epistemic floor."""
 
-    def __init__(self, dmap: DiffusionMap, artifacts: "list[dict] | list[IndexedArtifact]"):
+    def __init__(
+        self,
+        dmap: DiffusionMap,
+        artifacts: "list[dict] | list[IndexedArtifact]",
+        *,
+        symmetry_generators=None,
+        symmetry_graph=None,
+    ):
         self._coord = {nid: dmap.coordinates[i] for i, nid in enumerate(dmap.node_ids)}
         self._artifacts: list[IndexedArtifact] = []
         for a in artifacts:
             self._artifacts.append(a if isinstance(a, IndexedArtifact) else self._index_record(a))
+        # Symmetry-aware retrieval: collapse artifacts equivalent under the graph's
+        # automorphisms so a slot is not filled by redundant symmetric copies.
+        if symmetry_generators is not None:
+            if symmetry_graph is None:
+                raise ValueError("symmetry_generators requires symmetry_graph")
+            self._artifacts = dedup_by_symmetry(
+                self._artifacts, symmetry_generators, tuple(dmap.node_ids), symmetry_graph
+            )
 
     def _centroid(self, node_ids) -> "np.ndarray | None":
         pts = [self._coord[n] for n in node_ids if n in self._coord]
