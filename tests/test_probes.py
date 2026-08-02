@@ -18,6 +18,11 @@ def _ring(n: int):
     return build_knn_graph(emb, k=2)
 
 
+def _line(n: int):
+    # A non-regular graph (endpoints differ from interior) with a reflection automorphism.
+    return build_knn_graph([[float(i), 0.0] for i in range(n)], k=2)
+
+
 class ImpulseProbeTests(unittest.TestCase):
     def test_pulse_spreads_over_time(self) -> None:
         # Participation ratio is the parity-robust spread metric (a ring is
@@ -43,6 +48,11 @@ class ImpulseProbeTests(unittest.TestCase):
             impulse_probe(g, [], steps=1)
         with self.assertRaises(ValueError):
             impulse_probe(g, [99], steps=1)
+
+    def test_rejects_duplicate_anchors(self) -> None:
+        g = _ring(6)
+        with self.assertRaises(ValueError):
+            impulse_probe(g, [0, 0, 1], steps=2)
 
 
 class SpectralBandProbeTests(unittest.TestCase):
@@ -89,6 +99,15 @@ class SeedPersistenceProbeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             seed_persistence_probe(g, seed_nodes=[], params=DynamicsParams())
 
+    def test_fails_closed_on_bad_steps_and_threshold(self) -> None:
+        g = _ring(6)
+        with self.assertRaises(ValueError):
+            seed_persistence_probe(g, [0], DynamicsParams(), hold_steps=-1)
+        with self.assertRaises(ValueError):
+            seed_persistence_probe(g, [0], DynamicsParams(), release_steps=-1)
+        with self.assertRaises(ValueError):
+            seed_persistence_probe(g, [0], DynamicsParams(), threshold=1.5)
+
 
 class SymmetryProbeTests(unittest.TestCase):
     def test_identity_is_equivariant(self) -> None:
@@ -101,6 +120,17 @@ class SymmetryProbeTests(unittest.TestCase):
         g = _ring(12)
         rot = np.array([(i + 1) % 12 for i in range(12)])
         resp = symmetry_probe(g, rot)
+        self.assertLess(resp.defect, 1e-6)
+        self.assertTrue(resp.equivariant)
+
+    def test_line_reflection_is_automorphism_on_non_regular_graph(self) -> None:
+        # A line graph is non-regular (endpoints differ from interior); its
+        # reflection i <-> n-1-i is a true automorphism. This guards the
+        # row-vs-column operator convention on a graph where P is not symmetric.
+        n = 9
+        g = _line(n)
+        reflection = np.array([n - 1 - i for i in range(n)])
+        resp = symmetry_probe(g, reflection)
         self.assertLess(resp.defect, 1e-6)
         self.assertTrue(resp.equivariant)
 

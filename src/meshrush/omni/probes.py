@@ -45,11 +45,15 @@ def impulse_probe(graph: WeightedGraph, anchors, *, steps: int = 4) -> ImpulseRe
     anchors = tuple(int(a) for a in anchors)
     if not anchors or any(a < 0 or a >= n for a in anchors):
         raise ValueError("anchors must be non-empty node indices in range")
+    if len(set(anchors)) != len(anchors):
+        raise ValueError("anchors must be unique (duplicates make the distribution invalid)")
 
-    pi0 = np.zeros(n)
-    pi0[list(anchors)] = 1.0 / len(anchors)
+    pi = np.zeros(n)
+    pi[list(anchors)] = 1.0 / len(anchors)
     p = transition(graph)
-    pi = pi0 @ np.linalg.matrix_power(p, steps)
+    # Iterate the row-vector distribution step (O(steps·n^2)); avoids allocating P^steps.
+    for _ in range(steps):
+        pi = pi @ p
 
     ss = float(np.sum(pi ** 2))
     participation = 1.0 / ss if ss > 0 else float(n)
@@ -130,6 +134,12 @@ def seed_persistence_probe(
     seed_nodes = tuple(int(s) for s in seed_nodes)
     if not seed_nodes or any(s < 0 or s >= n for s in seed_nodes):
         raise ValueError("seed_nodes must be non-empty node indices in range")
+    if len(set(seed_nodes)) != len(seed_nodes):
+        raise ValueError("seed_nodes must be unique")
+    if hold_steps < 0 or release_steps < 0:
+        raise ValueError("hold_steps and release_steps must be >= 0")
+    if not (0.0 <= threshold <= 1.0):
+        raise ValueError("threshold must be in [0, 1] (phi is clipped to [0,1])")
     mask = np.zeros(n, dtype=bool)
     mask[list(seed_nodes)] = True
 
@@ -181,7 +191,9 @@ def symmetry_probe(
 ) -> SymmetryDefect:
     """Active-equivariance defect of the graph's response operator under ``perm``.
 
-    The response operator is one random-walk step ``R = P``. For a graph
+    The response operator is one random-walk step applied to a column vector,
+    ``R x = P^T x`` — the transpose of the row-stochastic ``P``, consistent with
+    the distribution convention of ``impulse_probe`` (``pi @ P``). For a graph
     automorphism ``P`` commutes with the permutation and the defect is ~0; a
     non-automorphism produces a positive defect (spec §11.4 / §12.5 ``d_R``).
     """
@@ -190,13 +202,13 @@ def symmetry_probe(
     if perm.shape != (n,):
         raise ValueError(f"perm must have shape ({n},)")
     pmat = _permutation_matrix(perm, n)
-    p = transition(graph)
+    step = transition(graph).T          # one random-walk step on a column vector
     if signal is None:
         signal = np.random.default_rng(0).standard_normal(n)
     signal = np.asarray(signal, dtype=float)
 
-    r_of_perm = p @ (pmat @ signal)     # R(Πx)
-    perm_of_r = pmat @ (p @ signal)     # Π R(x)
-    base = float(np.linalg.norm(p @ signal))
+    r_of_perm = step @ (pmat @ signal)  # R(Πx)
+    perm_of_r = pmat @ (step @ signal)  # Π R(x)
+    base = float(np.linalg.norm(step @ signal))
     defect = float(np.linalg.norm(r_of_perm - perm_of_r)) / (base + 1e-12)
     return SymmetryDefect(defect=defect, equivariant=defect <= tol)
