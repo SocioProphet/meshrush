@@ -140,11 +140,18 @@ class CairnLine:
         rank_policy: str = "distance",
         materialized: bool = False,
     ) -> CairnStep:
-        """Append a step, enforcing CairnLimits (fail closed on max_hops/opcode)."""
+        """Append a step, enforcing CairnLimits (fail closed on every breach)."""
         self.limits.check_opcode(opcode)
+        if cap_k < 1:
+            raise ValueError("cap_k must be >= 1")
+        if cap_k > self.limits.max_cap_k:
+            raise ValueError(f"cap_k {cap_k} exceeds CairnLimits.max_cap_k {self.limits.max_cap_k}")
         if len(self.steps) >= self.limits.max_hops:
+            raise ValueError(f"cairnline exceeds CairnLimits.max_hops {self.limits.max_hops}")
+        frontier = list(frontier)
+        if len(frontier) > cap_k:
             raise ValueError(
-                f"cairnline exceeds CairnLimits.max_hops {self.limits.max_hops}"
+                f"frontier size {len(frontier)} exceeds cap_k {cap_k}; a step may not record more than it caps"
             )
         step = CairnStep(
             index=len(self.steps),
@@ -159,9 +166,10 @@ class CairnLine:
 
     @property
     def digest(self) -> str:
-        """Replay identity: content hash over the ordered step digests + dataset."""
+        """Content-based replay identity: hash over the dataset and the ordered step
+        digests only. Deliberately excludes ``line_id`` (an external handle) so two
+        byte-identical replays share a digest regardless of their label."""
         return canonical_hash({
-            "line_id": self.line_id,
             "dataset_ref": self.dataset_ref,
             "steps": [s.digest for s in self.steps],
         })

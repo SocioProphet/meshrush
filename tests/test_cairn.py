@@ -77,6 +77,23 @@ class CairnLineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             line.record_step("expand", [_ref("b")], cap_k=1)
 
+    def test_record_step_fails_closed_on_cap_and_frontier(self):
+        line = CairnLine("l", "d", limits=CairnLimits(max_cap_k=2, max_hops=5))
+        with self.assertRaises(ValueError):  # cap_k over the policy cap
+            line.record_step("expand", [_ref("a")], cap_k=3)
+        with self.assertRaises(ValueError):  # cap_k below 1
+            line.record_step("expand", [_ref("a")], cap_k=0)
+        with self.assertRaises(ValueError):  # frontier longer than its own cap
+            line.record_step("expand", [_ref("a"), _ref("b")], cap_k=1)
+
+    def test_digest_is_content_based_and_ignores_line_id(self):
+        def build(line_id):
+            ln = CairnLine(line_id, "dataset@snap")
+            ln.record_step("expand", [_ref("a")], cap_k=1)
+            return ln
+        # Same dataset + steps, different external label -> same replay identity.
+        self.assertEqual(build("labelA").digest, build("labelB").digest)
+
     def test_digest_is_deterministic_and_sensitive(self):
         def build():
             ln = CairnLine("l", "d")
