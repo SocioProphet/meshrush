@@ -97,6 +97,10 @@ def refine_colors(graph: WeightedGraph, *, max_iter: int = 0, quantum: float = 1
     Weighted: each node's signature is its current color plus the sorted multiset of
     ``(neighbour color, quantized weight)`` — so weight structure refines roles.
     """
+    if quantum <= 0:
+        raise ValueError("quantum must be > 0")
+    if max_iter < 0:
+        raise ValueError("max_iter must be >= 0")
     n = graph.n
     w = graph.weights
     max_iter = max_iter or n
@@ -131,10 +135,20 @@ def survives_null(
 ) -> tuple[bool, float]:
     """Empirical null (§12.5): is ``perm``'s defect clearly below within-color random
     permutations? Returns ``(survives, p_value)`` where ``p_value`` is the fraction of
-    null permutations with defect <= perm's. A real symmetry has p_value ~0 and survives."""
+    null permutations that are STRICTLY better (lower defect) than ``perm``. A real
+    symmetry has p_value ~0 and survives.
+
+    A candidate that is not color-compatible (does not preserve the refinement
+    partition) cannot be a symmetry, so it is rejected up front as ``(False, 1.0)``."""
     rng = rng or np.random.default_rng(0)
     n = graph.n
+    permutation_matrix(perm, n)  # validate it is a permutation of range(n)
     colors = refine_colors(graph)
+
+    # A symmetry must preserve refinement colors; an incompatible perm is not one.
+    perm_arr = np.asarray(perm, dtype=int)
+    if any(int(colors[perm_arr[i]]) != int(colors[i]) for i in range(n)):
+        return (False, 1.0)
 
     observed = symmetry_defect(graph, perm, w_a=w_a, w_x=0.0, w_r=w_r).total
 

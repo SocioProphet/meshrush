@@ -79,6 +79,13 @@ class ColorRefinementTests(unittest.TestCase):
         self.assertNotEqual(c[0], c[3])       # hub and tail are distinct roles
         self.assertNotEqual(c[0], c[1])
 
+    def test_refine_colors_validates_args(self):
+        g = _ring(6)
+        with self.assertRaises(ValueError):
+            refine_colors(g, quantum=0.0)
+        with self.assertRaises(ValueError):
+            refine_colors(g, max_iter=-1)
+
 
 class EmpiricalNullTests(unittest.TestCase):
     def test_true_symmetry_survives_null_and_asymmetry_does_not(self):
@@ -91,6 +98,13 @@ class EmpiricalNullTests(unittest.TestCase):
         self.assertTrue(surv_sym)
         self.assertFalse(surv_asym)
         self.assertLess(p_sym, p_asym)
+
+    def test_color_incompatible_perm_is_rejected_up_front(self):
+        # swap(0,3) maps the hub role onto the tail role -> not color-compatible.
+        g = _triangle_tail()
+        surv, p = survives_null(g, np.array([3, 1, 2, 0]), samples=10)
+        self.assertFalse(surv)
+        self.assertEqual(p, 1.0)
 
 
 if __name__ == "__main__":
