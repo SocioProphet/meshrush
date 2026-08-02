@@ -63,8 +63,13 @@ class CrystalState:
     history: list = field(default_factory=list)
 
 
-def normalized_laplacian(graph: WeightedGraph) -> tuple[np.ndarray, float]:
-    """Return ``(L_tilde, lambda_max)`` where ``L_tilde = L / (lambda_max + eps)``."""
+def spectrally_scaled_laplacian(graph: WeightedGraph) -> tuple[np.ndarray, float]:
+    """Return ``(L_tilde, lambda_max)`` where ``L_tilde = L / (lambda_max + eps)``.
+
+    This is the **spectrally scaled unnormalized** Laplacian used by the band term
+    (spec §9.1, "normalize the Laplacian spectrum"), NOT the standard normalized
+    graph Laplacian ``D^-1/2 L D^-1/2`` — named explicitly to avoid that confusion.
+    """
     lap = laplacian(graph)
     lam_max = float(np.linalg.eigvalsh(lap).max())
     return lap / (lam_max + 1e-12), lam_max
@@ -83,8 +88,16 @@ def support_step(
     """One support-density update (spec §9.1)."""
     p = params
     lap = laplacian(graph) if lap is None else lap
+    # Fail fast: an enabled injection term with no observation vector is a config
+    # mistake, not a no-op.
+    if p.beta_u != 0.0:
+        if u is None:
+            raise ValueError("beta_u is enabled but no observation vector u was provided")
+        u = np.asarray(u, dtype=float)
+        if u.shape != (graph.n,):
+            raise ValueError(f"u must have shape ({graph.n},), got {u.shape}")
     if p.kappa_b != 0.0 and l_tilde is None:
-        l_tilde, _ = normalized_laplacian(graph)
+        l_tilde, _ = spectrally_scaled_laplacian(graph)
 
     mu = p.a * (c ** 3 - c) + p.kappa_c * (lap @ c) - p.eta * phi
     if p.kappa_b != 0.0:
@@ -92,8 +105,7 @@ def support_step(
         mu = mu + p.kappa_b * (m @ (m @ c))
 
     c_new = c - p.tau_c * (lap @ mu) - p.gamma_c * c
-    if p.beta_u != 0.0 and u is not None:
-        u = np.asarray(u, dtype=float)
+    if p.beta_u != 0.0:
         c_new = c_new + p.beta_u * (u - u.mean())
     return c_new
 
@@ -114,8 +126,18 @@ def crystallinity_step(
     p = params
     lap = laplacian(graph) if lap is None else lap
     n = graph.n
+    # Fail fast: an enabled reward/suppression term with no vector is a config
+    # mistake, not a silent zero.
+    if p.lambda_rel != 0.0 and r is None:
+        raise ValueError("lambda_rel is enabled but no relevance vector r was provided")
+    if p.lambda_sym != 0.0 and s is None:
+        raise ValueError("lambda_sym is enabled but no symmetry-pressure vector s was provided")
     r = np.zeros(n) if r is None else np.asarray(r, dtype=float)
     s = np.zeros(n) if s is None else np.asarray(s, dtype=float)
+    if r.shape != (n,):
+        raise ValueError(f"r must have shape ({n},), got {r.shape}")
+    if s.shape != (n,):
+        raise ValueError(f"s must have shape ({n},), got {s.shape}")
 
     g = (
         2.0 * p.nu * phi * (1.0 - phi) * (1.0 - 2.0 * phi)

@@ -10,7 +10,7 @@ from meshrush.crystal.dynamics import (
     advance,
     crystallinity_step,
     mbo_step,
-    normalized_laplacian,
+    spectrally_scaled_laplacian,
     support_step,
 )
 
@@ -94,12 +94,27 @@ class MboAndDriverTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             mbo_step(np.ones(g.n), g, tau_m=-1.0)
 
-    def test_normalized_laplacian_spectral_bound(self) -> None:
+    def test_spectrally_scaled_laplacian_spectral_bound(self) -> None:
         g = _ring(16)
-        l_tilde, lam_max = normalized_laplacian(g)
+        l_tilde, lam_max = spectrally_scaled_laplacian(g)
         top = float(np.linalg.eigvalsh(l_tilde).max())
         self.assertGreater(lam_max, 0.0)
         self.assertLessEqual(top, 1.0 + 1e-9)
+
+    def test_enabled_terms_fail_fast_when_vector_missing(self) -> None:
+        g = _ring(8)
+        # injection enabled but u omitted
+        with self.assertRaises(ValueError):
+            support_step(g, np.zeros(g.n), np.zeros(g.n), DynamicsParams(beta_u=0.5))
+        # relevance enabled but r omitted
+        with self.assertRaises(ValueError):
+            crystallinity_step(g, np.full(g.n, 0.4), np.zeros(g.n), DynamicsParams(lambda_rel=0.3))
+        # symmetry pressure enabled but s omitted
+        with self.assertRaises(ValueError):
+            crystallinity_step(g, np.full(g.n, 0.4), np.zeros(g.n), DynamicsParams(lambda_sym=0.3))
+        # wrong-shape u
+        with self.assertRaises(ValueError):
+            support_step(g, np.zeros(g.n), np.zeros(g.n), DynamicsParams(beta_u=0.5), u=np.zeros(3))
 
     def test_advance_steps_both_fields(self) -> None:
         g = _ring(10)
