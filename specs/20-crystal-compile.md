@@ -131,6 +131,21 @@ Crystal should ultimately formalize a compile certificate recording:
 
 Exact schema is deferred.
 
+### Implementation status (MR-06)
+
+`crystal/certificate.py` implements the concrete 6-gate certificate from the
+Omni-Crystal spec §14 (hardness+support, symmetry, spectral-sharpness,
+boundary-defect, persistence, compression-gain), reusing the MR-01/02/03/04a
+primitives. `evaluate_certificate` returns a `GateCertificate` carrying every
+gate result and a derived `epistemicLevel` (sp-core lattice): all gates pass →
+`bounded` (a compile is never `proved`); calibrated but failing → `synthetic`;
+uncalibrated thresholds → `speculative` and a refusal to compile (ECO-1
+fail-closed discipline). `to_compile_decision` bridges the verdict onto the
+existing `CompileOutcome` lifecycle (accept / rework / defer), and
+`certificate_to_attestation` emits the content-addressed artifact→durable-cell
+handoff sp-orchestrator ingests. The Rust sp-orchestrator cell/attestation
+ingestion side is tracked as MR-06b.
+
 ## Relationship to Omni
 
 Omni provides bounded candidates and exploratory evidence.
