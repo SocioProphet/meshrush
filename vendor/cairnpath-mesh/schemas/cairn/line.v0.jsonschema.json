@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://socioprophet.org/schemas/cairn/line.v0.jsonschema.json",
+  "title": "Cairn.Line v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "line_id",
+    "root_context_id",
+    "steps",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "line_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "root_context_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "running",
+        "complete",
+        "failed",
+        "branched"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch_of": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
