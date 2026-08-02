@@ -31,14 +31,29 @@ class MaterializeTests(unittest.TestCase):
         self.assertGreater(res.total_bytes, 0)
 
     def test_budget_exceeded_refuses_breaching_target_not_drops(self):
-        # Tight budget: first target fits, second is refused (withheld, not dropped).
-        # Each payload is ~58B; budget 80 fits the first, refuses the second.
+        # Derive the budget from the actual payload size (robust to sizing changes):
+        # measure one payload, then budget = that size so exactly one target fits.
+        one = materialize(
+            MaterializeRequest(targets=(_ref("a"),), mode=MaterializeMode.METADATA_ONLY),
+            MaterializePolicy(max_bytes=10_000), _fetcher_factory([]),
+        )
+        size = one.total_bytes
+        calls = []
         req = MaterializeRequest(targets=(_ref("a"), _ref("b")), mode=MaterializeMode.METADATA_ONLY)
-        res = materialize(req, MaterializePolicy(max_bytes=80), _fetcher_factory([]))
+        res = materialize(req, MaterializePolicy(max_bytes=size), _fetcher_factory(calls))
         self.assertIn("meshrush:artifact:a", res.granted)
         self.assertFalse(res.fully_granted)
         self.assertEqual(res.refused[0][0], "meshrush:artifact:b")
         self.assertIn("budget", res.refused[0][1])
+        # Short-circuit: the refused target was NOT fetched (no wasted egress).
+        self.assertEqual([c[0] for c in calls], ["meshrush:artifact:a"])
+
+    def test_private_mode_requires_redactor(self):
+        req = MaterializeRequest(targets=(_ref("a"),), mode=MaterializeMode.METADATA_ONLY)
+        policy = MaterializePolicy(privacy_mode="private")
+        res = materialize(req, policy, _fetcher_factory([]))  # no redactor
+        self.assertEqual(res.granted, {})
+        self.assertIn("requires a redactor", res.refused[0][1])
 
     def test_namespace_allow_list_fails_closed(self):
         req = MaterializeRequest(targets=(_ref("a", ns="external"),), mode=MaterializeMode.METADATA_ONLY)

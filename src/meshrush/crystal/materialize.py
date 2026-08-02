@@ -44,6 +44,8 @@ class MaterializePolicy:
     allowed_modes: tuple[MaterializeMode, ...] = tuple(MaterializeMode)
     allowed_namespaces: tuple[str, ...] = ()      # empty = any namespace
     privacy_mode: str = "restricted"              # public | restricted | private
+    # Enforcement: privacy_mode == "private" requires a redactor at materialize time
+    # (see materialize()); "public"/"restricted" are informational for downstream policy.
 
     def __post_init__(self) -> None:
         if self.max_bytes < 0:
@@ -73,7 +75,7 @@ class MaterializeResult:
 
 
 # fetcher(target, mode, projection) -> payload (JSON-serializable)
-Fetcher = Callable[[EntityRef, MaterializeMode, tuple], object]
+Fetcher = Callable[[EntityRef, MaterializeMode, "tuple[str, ...]"], object]
 Redactor = Callable[[EntityRef, object], "tuple[object, list[str]]"]
 
 
@@ -97,7 +99,16 @@ def materialize(
             result.refused.append((t.canonical, f"mode {request.mode.value!r} not permitted by policy"))
         return result
 
+    # Privacy gate (fail closed): private data may not be materialized without a redactor.
+    if policy.privacy_mode == "private" and redactor is None:
+        for t in request.targets:
+            result.refused.append((t.canonical, "privacy_mode 'private' requires a redactor; refused"))
+        return result
+
     budget = policy.max_bytes if request.max_bytes is None else min(request.max_bytes, policy.max_bytes)
+    # Projection is only meaningful for `properties`; never forward it in other modes
+    # (prevents accidental/hostile over-fetch influence in metadata modes).
+    projection = request.projection if request.mode is MaterializeMode.PROPERTIES else ()
 
     for target in request.targets:
         # Namespace allow-list.
@@ -105,7 +116,13 @@ def materialize(
             result.refused.append((target.canonical, f"namespace {target.namespace!r} not in allow-list"))
             continue
 
-        payload = fetcher(target, request.mode, request.projection)
+        # Short-circuit once the budget is exhausted: refuse WITHOUT fetching (no
+        # wasted governed egress).
+        if result.total_bytes >= budget:
+            result.refused.append((target.canonical, "materialization budget exhausted; withheld without fetch"))
+            continue
+
+        payload = fetcher(target, request.mode, projection)
         if redactor is not None:
             payload, applied = redactor(target, payload)
             result.redactions.extend(applied)
