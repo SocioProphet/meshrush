@@ -70,19 +70,28 @@ def main() -> int:
     drift: list[str] = []
     tamper: list[str] = []
     errors: list[str] = []
-    changed = False
+    any_changed = False
 
     for prov_path in sorted(VENDOR.glob("*/PROVENANCE.json")):
         prov = json.loads(prov_path.read_text(encoding="utf-8"))
         repo = _repo_slug(prov["vendored_from"])
         ref = prov["ref"]
         dep_dir = prov_path.parent
-        for entry in prov.get("files", []):
+        files = prov.get("files", [])
+        if not files:
+            errors.append(f"{dep_dir.name}: PROVENANCE pins zero files")
+            continue
+        dep_changed = False  # per-dep, so one dep's drift doesn't rewrite others
+        for entry in files:
             vfile = dep_dir / entry["path"]
             upstream_path = entry.get("upstream_path", entry["path"])
-            local_bytes = vfile.read_bytes()
-            local_sha = _sha256(local_bytes)
             label = f"{dep_dir.name}/{entry['path']}"
+            try:
+                local_bytes = vfile.read_bytes()
+            except OSError as exc:
+                errors.append(f"{label}: vendored file unreadable ({exc})")
+                continue
+            local_sha = _sha256(local_bytes)
 
             # Tamper: vendored bytes must match the pinned hash.
             if local_sha != entry["sha256"]:
@@ -99,9 +108,10 @@ def main() -> int:
                 if args.write:
                     vfile.write_bytes(up_bytes)
                     entry["sha256"] = up_sha
-                    changed = True
-        if args.write and changed:
+                    dep_changed = True
+        if args.write and dep_changed:
             prov_path.write_text(json.dumps(prov, indent=2) + "\n", encoding="utf-8")
+            any_changed = True
 
     for line in tamper:
         print(f"TAMPER: {line}", file=sys.stderr)
@@ -111,7 +121,12 @@ def main() -> int:
         print(f"ERROR:  {line}", file=sys.stderr)
 
     if args.write:
-        print("refreshed" if changed else "already current")
+        print("refreshed" if any_changed else "already current")
+        # Even in --write mode, unreadable files / zero-file provenance are hard errors.
+        if tamper or errors:
+            for line in tamper + errors:
+                print(f"UNRESOLVED: {line}", file=sys.stderr)
+            return 3
         return 0
     if tamper or drift or errors:
         print("vendor freshness FAILED (see above); run tools/check_vendor_freshness.py --write", file=sys.stderr)

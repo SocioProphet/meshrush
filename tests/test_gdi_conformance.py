@@ -32,6 +32,7 @@ class VendorIntegrityTests(unittest.TestCase):
     def test_vendored_schema_matches_pinned_hash(self):
         prov = _load(VENDOR / "PROVENANCE.json")
         self.assertEqual(prov["license"], "MIT")
+        self.assertTrue(prov["files"], "provenance must pin at least one file")
         vendor_root = VENDOR.resolve()
         for entry in prov["files"]:
             rel = entry["path"]
