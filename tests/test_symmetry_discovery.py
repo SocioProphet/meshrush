@@ -66,10 +66,12 @@ class DiscoveryTests(unittest.TestCase):
         b = discover_automorphisms(_c4()).automorphisms
         self.assertEqual(a, b)
 
-    def test_empty_graph(self):
+    def test_empty_graph_has_trivial_identity(self):
         res = discover_automorphisms(WeightedGraph((), np.zeros((0, 0)), np.zeros(0)))
         self.assertTrue(res.exact)
-        self.assertEqual(res.order, 0)
+        self.assertEqual(res.order, 1)  # identity on the empty vertex set
+        self.assertEqual(res.automorphisms, ((),))
+        self.assertEqual(res.orbits, ())
 
 
 class FailClosedTests(unittest.TestCase):

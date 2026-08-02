@@ -165,7 +165,9 @@ def discover_automorphisms(
     """
     n = graph.n
     if n == 0:
-        return AutomorphismResult((), (), method="empty", exact=True)
+        # the automorphism group of the empty graph is trivial: the identity on the
+        # empty vertex set (one permutation, the empty tuple). No nodes -> no orbits.
+        return AutomorphismResult(((),), (), method="empty", exact=True)
 
     if allow_native and _NATIVE_BACKEND is not None:
         native = _NATIVE_BACKEND(graph)
@@ -183,8 +185,11 @@ def discover_automorphisms(
         return AutomorphismResult((), _orbits_from_colors(colors), method="refinement", exact=False)
 
     autos, completed = _backtrack_automorphisms(graph, colors, max_steps)
-    perms = tuple(autos)
-    if not perms:  # search blew budget before finding even identity
+    if not completed:
+        # budget exhausted: the found permutations are a *partial* subgroup whose
+        # orbits would under-approximate the truth. Fall back to the color-refinement
+        # partition (the over-approximation), consistent with the too-large branch.
         return AutomorphismResult((), _orbits_from_colors(colors), method="refinement", exact=False)
+    perms = tuple(autos)
     orbits = _orbits_from_perms(n, perms)
-    return AutomorphismResult(perms, orbits, method="backtrack", exact=completed)
+    return AutomorphismResult(perms, orbits, method="backtrack", exact=True)
