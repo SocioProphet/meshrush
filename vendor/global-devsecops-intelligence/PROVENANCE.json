@@ -1,0 +1,15 @@
+{
+  "vendored_from": "https://github.com/SocioProphet/global-devsecops-intelligence",
+  "ref": "main",
+  "commit": "63397561063cd73ec00e0ed1fb7f5ac0838f3d1c",
+  "license": "MIT",
+  "retrieved_at": "2026-08-02",
+  "purpose": "GDI AI4IT event-envelope vendored for the MeshRush->GDI conformance gate (GDI-1). MeshRush emits ops-intelligence signals as GDI events; GDI is the ops-intel normalizer/query plane.",
+  "files": [
+    {
+      "path": "schemas/event-envelope.schema.json",
+      "upstream_path": "open-ai4it-spec/contracts/schemas/event-envelope.schema.json",
+      "sha256": "d64118eacf24adc85d28987f19373e2d6783f8707609f526b04b68c0b2d01597"
+    }
+  ]
+}

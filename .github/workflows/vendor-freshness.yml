@@ -1,0 +1,32 @@
+name: vendor-freshness
+
+# Standing sentinel: keep vendored schemas (cairnpath-mesh, GDI, ...) from silently
+# drifting from their upstream sources. Runs weekly and on demand; fails if any
+# vendored contract has drifted or been tampered with, so the integration updates
+# itself instead of quietly going stale.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'vendor/**'
+      - 'tools/check_vendor_freshness.py'
+      - '.github/workflows/vendor-freshness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  vendor-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check vendored schemas are current + untampered
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/check_vendor_freshness.py
