@@ -24,7 +24,13 @@ from enum import Enum
 
 import numpy as np
 
+from meshrush.core.cairn import CairnLimits, CairnLine, EntityRef, bounded_frontier_step
 from meshrush.omni.reduction import DiffusionMap
+
+
+def artifact_entity_ref(artifact_id: str) -> EntityRef:
+    """Canonical cairn identity for a compiled artifact (the findable address)."""
+    return EntityRef(namespace="meshrush", kind="artifact", key=artifact_id)
 
 
 class EpistemicLevel(str, Enum):
@@ -104,6 +110,7 @@ class Fill:
     epistemic: EpistemicLevel
     node_ids: tuple[str, ...]
     certificate_refs: tuple[str, ...]
+    entity_ref: str = ""               # canonical cairn address of the artifact
 
 
 @dataclass(frozen=True)
@@ -117,6 +124,7 @@ class RefusedSlot:
 class SlotFillResult:
     fills: dict[str, Fill] = field(default_factory=dict)
     refused: list[RefusedSlot] = field(default_factory=list)
+    cairnline: "CairnLine | None" = None   # the recorded retrieval walk (CP-02)
 
     @property
     def all_filled(self) -> bool:
@@ -166,27 +174,54 @@ class ArtifactSlotFiller:
             certificate_refs=cert_refs,
         )
 
-    def fill(self, slots: "list[SlotSpec]") -> SlotFillResult:
-        result = SlotFillResult()
+    def fill(
+        self,
+        slots: "list[SlotSpec]",
+        *,
+        cap_k: int = 8,
+        dataset_ref: str = "meshrush:diffusion",
+        limits: "CairnLimits | None" = None,
+    ) -> SlotFillResult:
+        """Fill each slot as a **cairnpath step**: Expand candidates that clear the
+        epistemic floor → Dedup by EntityRef → Rank by diffusion distance → Cap
+        (``bounded_frontier_step``) → materialize the nearest. The whole walk is
+        recorded as a ``CairnLine`` on the result. A slot with no qualifying
+        artifact is refused (never back-filled)."""
+        limits = limits or CairnLimits(max_hops=max(len(slots), 1), max_cap_k=max(cap_k, 1))
+        line = CairnLine(line_id="slotfill", dataset_ref=dataset_ref, limits=limits)
+        result = SlotFillResult(cairnline=line)
+
         for slot in slots:
             query = self._centroid(slot.anchor_nodes)
             if query is None:
+                line.record_step("retrieve", [], cap_k=cap_k)
                 result.refused.append(
                     RefusedSlot(slot.name, "anchor nodes not present in the diffusion map")
                 )
                 continue
-            # Single pass: track the nearest artifact that clears the floor, and the
-            # best epistemic seen overall (for an informative refusal). No sort.
-            best: "tuple[float, IndexedArtifact] | None" = None
+
+            # Expand: candidate artifacts that clear the epistemic floor (+ track the
+            # best epistemic seen, for an informative refusal).
+            candidates: list[EntityRef] = []
+            by_canon: dict[str, tuple[float, IndexedArtifact]] = {}
             best_epi: EpistemicLevel | None = None
             for a in self._artifacts:
                 if best_epi is None or a.epistemic.rank > best_epi.rank:
                     best_epi = a.epistemic
                 if a.epistemic.meets(slot.min_epistemic):
-                    dist = float(np.linalg.norm(a.centroid - query))
-                    if best is None or dist < best[0]:
-                        best = (dist, a)
-            if best is None:
+                    ref = artifact_entity_ref(a.artifact_id)
+                    by_canon[ref.canonical] = (float(np.linalg.norm(a.centroid - query)), a)
+                    candidates.append(ref)
+
+            # Dedup -> Rank(distance) -> Cap : the CairnPath invariant step.
+            frontier = bounded_frontier_step(
+                candidates,
+                rank_key=lambda r: by_canon[r.canonical][0],
+                cap_k=cap_k,
+                limits=limits,
+            )
+            if not frontier:
+                line.record_step("retrieve", [], cap_k=cap_k)
                 result.refused.append(
                     RefusedSlot(
                         slot.name,
@@ -198,7 +233,11 @@ class ArtifactSlotFiller:
                     )
                 )
                 continue
-            dist, winner = best
+
+            # Materialize the nearest cairn on the frontier.
+            line.record_step("retrieve", frontier, cap_k=cap_k, materialized=True)
+            winner_ref = frontier[0]
+            dist, winner = by_canon[winner_ref.canonical]
             result.fills[slot.name] = Fill(
                 slot_name=slot.name,
                 artifact_id=winner.artifact_id,
@@ -207,5 +246,6 @@ class ArtifactSlotFiller:
                 epistemic=winner.epistemic,
                 node_ids=winner.node_ids,
                 certificate_refs=winner.certificate_refs,
+                entity_ref=winner_ref.canonical,
             )
         return result

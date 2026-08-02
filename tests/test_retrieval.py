@@ -106,6 +106,48 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(artifact_epistemic({"compile": {}}), EpistemicLevel.SPECULATIVE)
 
 
+class CairnpathWalkTests(unittest.TestCase):
+    """CP-02: retrieval runs as a cairnpath (EntityRef-addressed, recorded CairnLine)."""
+
+    def setUp(self):
+        g = _dumbbell()
+        self.dmap = diffusion_coordinates(g, n_coords=3)
+        self.filler = ArtifactSlotFiller(
+            self.dmap,
+            [_record("artA", ["n0", "n1", "n2", "n3"]), _record("artB", ["n4"], outcome="DEFER")],
+        )
+
+    def test_fill_records_a_cairnline_with_a_step_per_slot(self):
+        res = self.filler.fill([
+            SlotSpec(name="a", anchor_nodes=("n0",)),
+            SlotSpec(name="b", anchor_nodes=("n4",)),
+        ])
+        self.assertIsNotNone(res.cairnline)
+        self.assertEqual(len(res.cairnline.steps), 2)
+        self.assertTrue(res.cairnline.digest.startswith("blake2b:"))
+
+    def test_fill_addresses_artifacts_by_entity_ref(self):
+        res = self.filler.fill([SlotSpec(name="a", anchor_nodes=("n0",))])
+        self.assertEqual(res.fills["a"].entity_ref, "meshrush:artifact:artA")
+        # The winning cairn appears in the recorded step's frontier.
+        self.assertIn("meshrush:artifact:artA", res.cairnline.steps[0].frontier_out)
+        self.assertTrue(res.cairnline.steps[0].materialized)
+
+    def test_refused_slot_records_an_empty_frontier_step(self):
+        res = self.filler.fill([
+            SlotSpec(name="need_proof", anchor_nodes=("n0",), min_epistemic=EpistemicLevel.PROVED),
+        ])
+        self.assertFalse(res.all_filled)
+        self.assertEqual(res.cairnline.steps[0].frontier_out, ())
+        self.assertFalse(res.cairnline.steps[0].materialized)
+
+    def test_walk_is_replay_stable(self):
+        slots = [SlotSpec(name="a", anchor_nodes=("n0",))]
+        d1 = self.filler.fill(slots).cairnline.digest
+        d2 = self.filler.fill(slots).cairnline.digest
+        self.assertEqual(d1, d2)
+
+
 class CrystalAtlasAdapterTests(unittest.TestCase):
     def setUp(self):
         g = _dumbbell()
