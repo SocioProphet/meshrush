@@ -210,3 +210,49 @@ def certificate_to_attestation(
     }
     body["attestation_id"] = "att." + canonical_hash(body)
     return body
+
+
+def certificate_to_proof_pack(
+    cert: GateCertificate,
+    *,
+    included_node_ids: "tuple[str, ...]",
+    graph_view_id: str,
+    signatures: "list[str]",
+    created_at: str,
+    provenance: "dict | None" = None,
+) -> dict:
+    """Emit the artifact's compile evidence as the **canonical estate ProofPack**
+    (prophet-core-contracts ``proof-pack.schema.json``) — the ledger-convergence shape.
+
+    Content is addressed by the same attestation hash (``ledger.head``); gates become
+    ``checks``; the sp-core epistemic level carries through. meshrush does not fabricate
+    signatures — the caller (which holds keys) supplies ``signatures`` (>=1); this is the
+    signing seam, so an unsigned pack is unrepresentable here.
+    """
+    if not signatures:
+        raise ValueError("a ProofPack requires >=1 signature; the caller signs (meshrush does not fabricate signatures)")
+    attestation = certificate_to_attestation(
+        cert, included_node_ids=included_node_ids, graph_view_id=graph_view_id, provenance=provenance
+    )
+    algo, _, head = canonical_hash(attestation).partition(":")  # "blake2b:<hex>"
+    return {
+        "schema_version": "0.1.0",
+        "proof_pack_id": "proofpack_" + head,
+        "subject_ref": {
+            "ref_type": "compiled_artifact",
+            "ref_id": cert.artifact_id,
+            "uri": f"meshrush://artifact/{cert.artifact_id}",
+        },
+        # A compile certificate is a deterministic gate construction, not an audit.
+        "claim_mode": "formal_construction",
+        "epistemic_level": cert.epistemic.value,
+        "ledger": {"algo": algo, "head": head},
+        "checks": [
+            {"name": g.name, "value": g.value, "threshold": g.threshold, "passed": g.passed}
+            for g in cert.gates
+        ],
+        "evidence_refs": [attestation["attestation_id"]],
+        "signatures": list(signatures),
+        "provenance": {"producer": "meshrush.crystal.certificate", **(provenance or {})},
+        "created_at": created_at,
+    }

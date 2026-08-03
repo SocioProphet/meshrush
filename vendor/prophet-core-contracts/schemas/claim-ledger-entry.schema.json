@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://socioprophet.ai/contracts/claim-ledger-entry.schema.json",
+  "title": "ClaimLedgerEntry",
+  "description": "One append-only, hash-chained ledger entry: digest = H(state_hash || prior_digest). The canonical recursion unit behind a ProofPack.ledger.head (unifies ProCybernetica H_t recursion, sp-attest, meshrush attestations).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "entry_id",
+    "epoch",
+    "algo",
+    "state_hash",
+    "prior_digest",
+    "digest",
+    "claim_mode",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "entry_id": {
+      "type": "string",
+      "pattern": "^ledger_[a-z0-9][a-z0-9_.-]*$"
+    },
+    "epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "algo": {
+      "type": "string",
+      "enum": [
+        "blake3",
+        "blake2b",
+        "sha256"
+      ]
+    },
+    "state_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16,128}$"
+    },
+    "prior_digest": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{16,128}$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "null at genesis (epoch 0)."
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16,128}$"
+    },
+    "claim_mode": {
+      "type": "string",
+      "enum": [
+        "formal_construction",
+        "illustrative",
+        "fixture_validated",
+        "experimental",
+        "independently_reproduced",
+        "audited"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
