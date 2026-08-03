@@ -1,0 +1,12 @@
+{
+  "vendored_from": "https://github.com/SocioProphet/prophet-core-contracts",
+  "ref": "main",
+  "commit": "6e8a16472f4437b96eb751af32002461d375701f",
+  "license": "MIT",
+  "retrieved_at": "2026-08-03",
+  "purpose": "Canonical ProofPack + ClaimLedgerEntry schemas vendored for the meshrush proof-pack conformance gate (ledger convergence #35). prophet-core-contracts is the normative home; meshrush emits the canonical shape at the sp-orchestrator seam.",
+  "files": [
+    { "path": "schemas/proof-pack.schema.json", "sha256": "bb581529169ad20d18c5c1dbc9db99f488990f8e613da68cacd6002f9259f80c" },
+    { "path": "schemas/claim-ledger-entry.schema.json", "sha256": "54733bb611f1e9b1f8b10ffb5c1342da2151095bdfba9f9d7e1cc71ba56b62bd" }
+  ]
+}
