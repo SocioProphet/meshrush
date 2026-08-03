@@ -12,7 +12,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from meshrush.core.cairn import CairnLimits, CairnLine, EntityRef
-from meshrush.adapters.cairnpath.frame import cairnline_to_frames
+from meshrush.adapters.cairnpath.frame import cairnline_to_context, cairnline_to_frames
 
 ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / "vendor" / "cairnpath-mesh"
@@ -85,6 +85,47 @@ class CairnFrameConformanceTests(unittest.TestCase):
         line.record_step("filter", [EntityRef("meshrush", "artifact", "a1")], cap_k=1, materialized=True)
         with self.assertRaises(ValueError):
             cairnline_to_frames(line, created_at="2026-08-02T00:00:00Z")
+
+
+class CairnContextConformanceTests(unittest.TestCase):
+    def setUp(self):
+        self.schema = _load(VENDOR / "schemas/cairn/context.v0.jsonschema.json")
+        self.validator = Draft202012Validator(self.schema)
+        self.line = CairnLine("L1", "dataset@snap1", limits=CairnLimits(max_hops=4, max_cap_k=8))
+
+    def _context(self, **over):
+        kw = dict(seed_entities=["meshrush:artifact:a1", "meshrush:artifact:a2"],
+                  created_at="2026-08-02T00:00:00Z")
+        kw.update(over)
+        return cairnline_to_context(self.line, **kw)
+
+    def test_context_frame_conforms(self):
+        ctx = self._context()
+        errors = sorted(self.validator.iter_errors(ctx), key=lambda e: list(e.path))
+        self.assertEqual(errors, [], f"context.v0 errors: {[e.message for e in errors]}")
+
+    def test_context_carries_limits_and_frontier(self):
+        ctx = self._context(engine="neo4j", allowed_namespaces=("meshrush",), privacy_mode="neighborhood")
+        self.assertEqual(ctx["constraints"]["max_hops"], 4)
+        self.assertEqual(ctx["frontier"]["cap_k"], 8)
+        self.assertEqual(ctx["constraints"]["allowed_namespaces"], ["meshrush"])
+        self.assertRegex(ctx["frontier"]["dedup_set_hash"], r"^[a-f0-9]{64}$")
+        self.assertEqual(ctx["context_id"], "ctx:L1:0")  # matches line's root_context_id
+
+    def test_context_root_id_matches_line_root(self):
+        frames = cairnline_to_frames(self.line, created_at="2026-08-02T00:00:00Z")
+        self.assertEqual(self._context()["context_id"], frames["line"]["root_context_id"])
+
+    def test_dedup_hash_is_order_independent(self):
+        a = self._context(seed_entities=["x", "y"])["frontier"]["dedup_set_hash"]
+        b = self._context(seed_entities=["y", "x"])["frontier"]["dedup_set_hash"]
+        self.assertEqual(a, b)
+
+    def test_empty_seeds_and_bad_engine_fail_closed(self):
+        with self.assertRaises(ValueError):
+            self._context(seed_entities=[])
+        with self.assertRaises(ValueError):
+            self._context(engine="mongodb")
 
 
 if __name__ == "__main__":

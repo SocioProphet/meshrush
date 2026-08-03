@@ -11,13 +11,79 @@ materialized, by a ``materialize`` step (minimum-necessary, metadata_only).
 """
 from __future__ import annotations
 
+import hashlib
+import json
+
 from meshrush.core.cairn import CairnLine
 
 _OPCODE_MAP = {"retrieve": "cap"}
 
+# cairn/context.v0 engine enum (kept in sync with the vendored schema).
+_CONTEXT_ENGINES = ("neo4j", "atomspace", "terminusdb", "rdf", "custom")
+
 
 def _ctx(line_id: str, i: int) -> str:
     return f"ctx:{line_id}:{i}"
+
+
+def _dedup_set_hash(canonicals: "list[str]") -> str:
+    """sha256 (64 hex, matching context.v0's pattern) over the deduped, sorted set —
+    the frontier's content identity, independent of insertion order."""
+    payload = json.dumps(sorted(set(canonicals)), ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def cairnline_to_context(
+    line: CairnLine,
+    *,
+    seed_entities: "list[str] | tuple[str, ...]",
+    created_at: str,
+    engine: str = "custom",
+    engine_ref: "str | None" = None,
+    allowed_namespaces: "tuple[str, ...]" = (),
+    privacy_mode: "str | None" = None,
+) -> dict:
+    """Emit a normative ``cairn/context.v0`` frame for ``line``'s root traversal context.
+
+    The context binds the walk to its dataset, entry seeds, bounded frontier, and the
+    CairnLimits constraints — the governed setup a CairnPath backend replays under.
+    ``seed_entities`` are canonical entity ids (>=1 required); ``created_at`` is an
+    RFC3339 date-time. Fails closed on an unknown ``engine``.
+    """
+    seeds = list(seed_entities)
+    if not seeds:
+        raise ValueError("cairn context requires at least one seed entity")
+    if engine not in _CONTEXT_ENGINES:
+        raise ValueError(f"engine {engine!r} not in {_CONTEXT_ENGINES}")
+
+    frontier = {
+        "ordered": seeds,
+        "dedup_set_hash": _dedup_set_hash(seeds),
+        "cap_k": line.limits.max_cap_k,
+        "dedup_strategy": "canonical_equivalence",  # dedup by canonical EntityRef
+        "stable_order": "rank_then_lex",            # bounded_frontier_step ordering
+    }
+    constraints: dict = {
+        "max_hops": line.limits.max_hops,
+        "max_materialize_bytes": line.limits.max_materialize_bytes,
+    }
+    if allowed_namespaces:
+        constraints["allowed_namespaces"] = list(allowed_namespaces)
+    if privacy_mode is not None:
+        constraints["privacy_mode"] = privacy_mode
+
+    context = {
+        "context_id": _ctx(line.line_id, 0),   # the root context the line references
+        "engine": engine,
+        "dataset_ref": line.dataset_ref,
+        "seed_entities": seeds,
+        "frontier": frontier,
+        "constraints": constraints,
+        "created_at": created_at,
+    }
+    if engine_ref is not None:
+        context["engine_ref"] = engine_ref
+    return context
 
 
 def cairnline_to_frames(line: CairnLine, *, created_at: str, status: str = "complete") -> dict:

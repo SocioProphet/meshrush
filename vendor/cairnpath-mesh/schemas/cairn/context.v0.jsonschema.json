@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://socioprophet.org/schemas/cairn/context.v0.jsonschema.json",
+  "title": "Cairn.Context v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "context_id",
+    "engine",
+    "dataset_ref",
+    "seed_entities",
+    "frontier",
+    "constraints",
+    "created_at"
+  ],
+  "properties": {
+    "context_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "engine": {
+      "type": "string",
+      "enum": [
+        "neo4j",
+        "atomspace",
+        "terminusdb",
+        "rdf",
+        "custom"
+      ]
+    },
+    "engine_ref": {
+      "type": "string"
+    },
+    "dataset_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seed_entities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "frontier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordered",
+        "dedup_set_hash",
+        "cap_k"
+      ],
+      "properties": {
+        "ordered": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "dedup_set_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "cap_k": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dedup_strategy": {
+          "type": "string",
+          "enum": [
+            "identity",
+            "canonical_equivalence"
+          ]
+        },
+        "stable_order": {
+          "type": "string",
+          "enum": [
+            "rank_then_lex",
+            "lexicographic"
+          ]
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowed_relations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_predicates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_namespaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_hops": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_materialize_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost_budget": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_rows": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_db_hits": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_exec_jobs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "privacy_mode": {
+          "type": "string",
+          "enum": [
+            "public",
+            "neighborhood",
+            "private"
+          ]
+        }
+      }
+    },
+    "bindings": {
+      "type": "object"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
