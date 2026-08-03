@@ -13,6 +13,10 @@
     {
       "path": "schemas/cairn/line.v0.jsonschema.json",
       "sha256": "8ee533731f28c12b0af940da14343a6734e57b874b4782b5fc72cbd7442c27e0"
+    },
+    {
+      "path": "schemas/cairn/context.v0.jsonschema.json",
+      "sha256": "7c99a163fe94aa45f197d01c2c5aac7fc47968cdd60abb89658999834975a225"
     }
   ]
 }
