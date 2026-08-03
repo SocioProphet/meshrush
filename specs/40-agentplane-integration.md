@@ -62,6 +62,23 @@ At a conceptual level, MeshRush returns:
 - replayable state transitions
 - bounded metrics relevant to run evaluation
 
+## Governance seam (MR-08)
+
+`core/governance.py` implements the ADR 0005 §2–3 governance mechanics:
+
+- **`ExpansionPoint` + `admit_expansion`** — the observe→compile loop expands only at
+  declared points, each capped by admissible shapes and depth / breadth / budget.
+  Admission is fail-closed, so a loop is a *bounded* correction (terminates within
+  budget) rather than an unbounded agent-authored edge — the "loop as DAG" discipline.
+- **`ConductorManifest`** — a content-addressed declaration by the conductor of the
+  admissible ExpansionPoints and allowed transforms. `authorizes` fails closed on
+  actor/transform: nothing may act outside a published manifest ("gates entrances and
+  dynamics, not notes").
+- **`govern_receipt` / `reasoning_trace_to_observation`** — an `agent-machine`
+  execution receipt or a `prophet-mesh` reasoning trace becomes a MeshRush observation
+  only when the manifest authorizes it, entering at an epistemic floor never above
+  `bounded`.
+
 ## Run doctrine
 
 Every MeshRush execution under agentplane should be representable as a governed run.
